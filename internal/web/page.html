@@ -496,7 +496,7 @@ function drawPools(status) {
       kv.style.height = `${box.h * 100}%`;
       kv.firstElementChild.style.height = `${h.cache > 0 ? ((h.held ?? 0) / h.cache) * 100 : 0}%`;
       const fits = box.w * r.w * side >= KV_LABEL_MIN_PX.width && box.h * r.h * side >= KV_LABEL_MIN_PX.height;
-      kv.lastElementChild.textContent = fits ? `KV ${short(m.kv_tokens)}/${short(m.context)}` : "";
+      kv.lastElementChild.textContent = fits ? `KV ${tokens(m, short, "/")}` : "";
     }
 
     const free = placed.find((p) => p.key === FREE);
@@ -536,7 +536,7 @@ function rate(model, now) {
   const key = keyOf(model);
   if (!growth.has(key)) growth.set(key, []);
   const seen = growth.get(key);
-  if (model.state !== "serving") { seen.length = 0; return null; }
+  if (model.state !== "serving" || model.kv_tokens == null) { seen.length = 0; return null; }
   seen.push([now, model.kv_tokens]);
   while (seen.length > 2 && now - seen[0][0] > RATE_WINDOW_MS) seen.shift();
   const [t0, n0] = seen[0];
@@ -546,7 +546,10 @@ function rate(model, now) {
 
 const stateBadge = (m) =>
   `<span class="state ${escape(m.state)}"><i></i><span>${STATES[m.state] ?? escape(m.state)}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
-const fill = (m) => (m.context > 0 ? Math.min(1, m.kv_tokens / m.context) : 0);
+const fill = (m) => (m.context > 0 ? Math.min(1, (m.kv_tokens ?? 0) / m.context) : 0);
+/* "held / context", a dash for either the engine does not say. */
+const tokens = (m, format, sep = " / ") =>
+  `${m.kv_tokens == null ? "–" : format(m.kv_tokens)}${sep}${m.context == null ? "–" : format(m.context)}`;
 
 const rates = new Map();
 function drawModels(status, now) {
@@ -559,7 +562,8 @@ function drawModels(status, now) {
     el.querySelector(".model-name .engine").textContent = m.engine;
     el.querySelector(".model-name").title = `${m.id} on ${m.engine} at ${m.endpoint}`;
     el.querySelector(".state").outerHTML = stateBadge(m);
-    el.querySelector(".tokens").textContent = `KV ${count(m.kv_tokens)} / ${count(m.context)}`;
+    el.querySelector(".tokens").textContent = `KV ${tokens(m, count)}`;
+    el.querySelector(".meter").style.visibility = m.kv_tokens == null ? "hidden" : "";
     el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
     el.querySelector(".rate").textContent = rateText(rates.get(keyOf(m)), "");
   }
@@ -598,11 +602,16 @@ function modelDetails(status, key) {
     <button class="close" aria-label="Close">×</button></div>
     <div class="note">${escape(m.engine)} at ${escape(m.endpoint)}</div>
     ${stateBadge(m)}
-    <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${count(m.context)} tokens in its KV cache</span></div>
-    <div class="meter" style="--c:${c}"><i style="width:${fill(m) * 100}%"></i></div>
-    <div class="note">${m.max_context > m.context
+    ${m.kv_tokens != null ? `
+    <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${m.context == null ? "–" : count(m.context)} tokens in its KV cache</span></div>
+    <div class="meter" style="--c:${c}"><i style="width:${fill(m) * 100}%"></i></div>`
+    : m.context != null ? `
+    <div class="big"><b>${count(m.context)}</b><span>tokens of context</span></div>
+    <div class="note">${escape(m.engine)} does not say how many are in use</div>`
+    : `<div class="note">${escape(m.engine)} does not say what its KV cache holds</div>`}
+    ${m.max_context == null || m.context == null ? "" : `<div class="note">${m.max_context > m.context
       ? `Can grow to ${count(m.max_context)} tokens`
-      : "Sized for the longest context it can hold"}</div>
+      : "Sized for the longest context it can hold"}</div>`}
     <div class="facts">
       <div><small>KV reserved</small><span>${size(reserved)}</span></div>
       <div><small>KV per token</small><span>${size(perToken)}</span></div>
@@ -663,11 +672,11 @@ function showTip(event, pool, key) {
   } else {
     const h = holding(m, pool);
     tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
-      <div class="row"><span>${poolInfo(pool).label}, weights</span><span>${gb(h.weights)}</span></div>
+      <div class="row"><span>${poolInfo(pool).label}, ${h.cache == null ? "held" : "weights"}</span><span>${gb(h.weights)}</span></div>
       <div class="row"><span>KV reserved</span><span>${size(h.cache)}</span></div>
       <div class="row"><span>KV in use</span><span>${size(h.held)}</span></div>
       <div class="row"><span>Engine</span><span>${escape(m.engine)}</span></div>
-      <div class="row"><span>Context</span><span>${count(m.kv_tokens)} / ${count(m.context)}</span></div>
+      <div class="row"><span>Context</span><span>${tokens(m, count)}</span></div>
       <div class="more">Click for details</div>`;
   }
   const x = Math.min(event.clientX + 14, innerWidth - tip.offsetWidth - 12);
