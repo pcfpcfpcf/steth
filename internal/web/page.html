@@ -261,6 +261,8 @@ const SERIES_INK = ["#fff", "#fff", "#fff", "#0b0b0b", "#fff", "#fff", "#fff", "
 
 const $ = (id) => document.getElementById(id);
 const series = (i) => `var(--s${(i % 8) + 1})`;
+/* The treemap's key for a pool's free space; a model's key is never it. */
+const FREE = "";
 const gb = (bytes) => {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(bytes >= 1e11 ? 0 : 1)} GB`;
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
@@ -271,6 +273,28 @@ const count = (n) => Math.round(n).toLocaleString("en-US");
 const short = (n) => (n >= 1e3 ? `${+(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(Math.round(n)));
 const escape = (text) => String(text).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
+
+/* ---- models come and go ---- */
+/* A model is known by its engine's endpoint and its name. It keeps its
+   colour while it stays loaded; a colour given up goes to the next model. */
+const keyOf = (m) => `${m.endpoint} ${m.id}`;
+const colors = new Map();
+const colorOf = (m) => colors.get(keyOf(m));
+const findModel = (status, key) => status.models.find((m) => keyOf(m) === key);
+
+/* Gives each new model a colour and forgets every key gone, calling
+   `forget(key)` so each view can drop what it drew for it. */
+function track(status, forget) {
+  const keys = new Set(status.models.map(keyOf));
+  for (const key of colors.keys()) if (!keys.has(key)) { colors.delete(key); forget(key); }
+  for (const key of keys) {
+    if (colors.has(key)) continue;
+    const taken = new Set(colors.values());
+    let c = 0;
+    while (taken.has(c)) c++;
+    colors.set(key, c);
+  }
+}
 
 /* ---- theme ---- */
 function applyTheme(choice) {
@@ -369,25 +393,26 @@ function square(pool) {
   $("pools").appendChild(wrap);
   const view = {
     el: wrap.querySelector(".square"), figure: wrap.querySelector(".pool-figure"),
-    empty: wrap.querySelector(".empty"), blocks: [], free: null,
+    empty: wrap.querySelector(".empty"), blocks: new Map(), free: null,
   };
   wrap.querySelector(".pool-head").addEventListener("click", () => select({ pool }));
   squares[pool] = view;
   return view;
 }
 
-function blockFor(view, pool, i) {
-  if (view.blocks[i]) return view.blocks[i];
+function blockFor(view, pool, m) {
+  const key = keyOf(m);
+  if (view.blocks.has(key)) return view.blocks.get(key);
   const el = document.createElement("button");
   el.className = "block";
-  el.style.setProperty("--c", series(i));
-  el.style.setProperty("--on-c", SERIES_INK[i % 8]);
+  el.style.setProperty("--c", series(colorOf(m)));
+  el.style.setProperty("--on-c", SERIES_INK[colorOf(m) % 8]);
   el.innerHTML = `<div class="kv"><i></i><em></em></div><div class="label"><b></b><span></span></div>`;
-  el.addEventListener("mousemove", (e) => showTip(e, pool, i));
+  el.addEventListener("mousemove", (e) => showTip(e, pool, key));
   el.addEventListener("mouseleave", hideTip);
-  el.addEventListener("click", () => select({ model: i }));
+  el.addEventListener("click", () => select({ model: key }));
   view.el.appendChild(el);
-  view.blocks[i] = el;
+  view.blocks.set(key, el);
   return el;
 }
 
@@ -396,7 +421,7 @@ function freeFor(view, pool) {
   const el = document.createElement("button");
   el.className = "free";
   el.innerHTML = `<div class="label"><b>Free</b><span></span></div>`;
-  el.addEventListener("mousemove", (e) => showTip(e, pool, -1));
+  el.addEventListener("mousemove", (e) => showTip(e, pool, FREE));
   el.addEventListener("mouseleave", hideTip);
   el.addEventListener("click", () => select({ pool }));
   view.el.appendChild(el);
@@ -420,23 +445,23 @@ function drawPools(status) {
       ? (bytes > 0 ? `${gb(bytes)} streamed` : "nothing streamed")
       : absent ? "none" : `${gb(bytes)} of ${gb(pool.capacity_bytes)}`);
 
-    const items = status.models.map((m, i) => ({ key: i, area: whole(holding(m, pool.name)) }));
-    if (!drive) items.push({ key: -1, area: pool.capacity_bytes - used });
+    const items = status.models.map((m) => ({ key: keyOf(m), area: whole(holding(m, pool.name)) }));
+    if (!drive) items.push({ key: FREE, area: pool.capacity_bytes - used });
     const placed = treemap(items, 0, 0, 1, 1, []);
     const side = view.el.clientWidth;
 
-    status.models.forEach((m, i) => {
-      const el = blockFor(view, pool.name, i);
-      const r = placed.find((p) => p.key === i);
+    for (const m of status.models) {
+      const el = blockFor(view, pool.name, m);
+      const r = placed.find((p) => p.key === keyOf(m));
       const h = holding(m, pool.name);
       el.classList.toggle("gone", !r);
       el.tabIndex = r ? 0 : -1;
       el.setAttribute("aria-hidden", String(!r));
-      if (!r) { el.style.width = el.style.height = "0"; return; }
+      if (!r) { el.style.width = el.style.height = "0"; continue; }
       place(el, r);
       el.classList.toggle("moving", m.state === "moving");
       el.classList.toggle("serving", m.state === "serving");
-      el.classList.toggle("selected", selected.model === i);
+      el.classList.toggle("selected", selected.model === keyOf(m));
       el.setAttribute("aria-label", `${m.id}: ${gb(whole(h))} in ${POOLS[pool.name].label}`);
       const label = el.querySelector(".label");
       label.querySelector("b").textContent = m.id;
@@ -451,9 +476,9 @@ function drawPools(status) {
       kv.firstElementChild.style.height = `${h.cache > 0 ? (h.held / h.cache) * 100 : 0}%`;
       const fits = box.w * r.w * side >= KV_LABEL_MIN_PX.width && box.h * r.h * side >= KV_LABEL_MIN_PX.height;
       kv.lastElementChild.textContent = fits ? `KV ${short(m.kv_tokens)}/${short(m.context)}` : "";
-    });
+    }
 
-    const free = placed.find((p) => p.key === -1);
+    const free = placed.find((p) => p.key === FREE);
     if (!drive && !absent) {
       const el = freeFor(view, pool.name);
       el.classList.toggle("gone", !free);
@@ -469,24 +494,27 @@ function drawPools(status) {
 }
 
 /* ---- the model rows ---- */
-const rows = [];
-const growth = []; /* per model: recent [time, cache tokens] while it serves */
-function rowFor(i) {
-  if (rows[i]) return rows[i];
+const rows = new Map();
+const growth = new Map(); /* per model: recent [time, cache tokens] while it serves */
+function rowFor(m) {
+  const key = keyOf(m);
+  if (rows.has(key)) return rows.get(key);
   const el = document.createElement("button");
   el.className = "model";
-  el.style.setProperty("--c", series(i));
+  el.style.setProperty("--c", series(colorOf(m)));
   el.innerHTML = `
     <i class="swatch"></i><span class="model-name"></span><span class="state"><i></i><span></span></span>
     <span class="model-kv"><span class="tokens"></span><span class="meter"><i></i></span><span class="rate"></span></span>`;
-  el.addEventListener("click", () => select({ model: i }));
+  el.addEventListener("click", () => select({ model: key }));
   $("models").appendChild(el);
-  rows[i] = el;
+  rows.set(key, el);
   return el;
 }
 
-function rate(i, model, now) {
-  const seen = (growth[i] ||= []);
+function rate(model, now) {
+  const key = keyOf(model);
+  if (!growth.has(key)) growth.set(key, []);
+  const seen = growth.get(key);
   if (model.state !== "serving") { seen.length = 0; return null; }
   seen.push([now, model.kv_tokens]);
   while (seen.length > 2 && now - seen[0][0] > RATE_WINDOW_MS) seen.shift();
@@ -499,20 +527,21 @@ const stateBadge = (m) =>
   `<span class="state ${m.state}"><i></i><span>${STATES[m.state]}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
 const fill = (m) => (m.context > 0 ? Math.min(1, m.kv_tokens / m.context) : 0);
 
-const rates = [];
+const rates = new Map();
 function drawModels(status, now) {
-  status.models.forEach((m, i) => {
-    const el = rowFor(i);
-    rates[i] = rate(i, m, now);
-    el.classList.toggle("selected", selected.model === i);
+  for (const m of status.models) {
+    const el = rowFor(m);
+    rates.set(keyOf(m), rate(m, now));
+    el.classList.toggle("selected", selected.model === keyOf(m));
     el.querySelector(".model-name").textContent = m.id;
     el.querySelector(".model-name").title = m.id;
     el.querySelector(".state").outerHTML = stateBadge(m);
     el.querySelector(".tokens").textContent = `KV ${count(m.kv_tokens)} / ${count(m.context)}`;
     el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
-    el.querySelector(".rate").textContent = rates[i] == null ? "" : `${rates[i].toFixed(1)} tok/s`;
-  });
+    el.querySelector(".rate").textContent = rateText(rates.get(keyOf(m)), "");
+  }
 }
+const rateText = (r, none) => (r == null ? none : `${r.toFixed(1)} tok/s`);
 
 function drawSummary(status) {
   const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
@@ -536,23 +565,23 @@ function closePanel() { select({}); }
 $("scrim").addEventListener("click", closePanel);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel(); });
 
-function modelDetails(status, i) {
-  const m = status.models[i];
+function modelDetails(status, key) {
+  const m = findModel(status, key), c = series(colorOf(m));
   const perToken = sum(Object.values(m.pools), (p) => p.kv_bytes_per_token);
   const pools = status.pools.map((p) => ({ name: p.name, h: holding(m, p.name) }));
   return `
-    <div class="panel-head"><h3><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</h3>
+    <div class="panel-head"><h3><i class="swatch" style="--c:${c}"></i>${escape(m.id)}</h3>
     <button class="close" aria-label="Close">×</button></div>
     ${stateBadge(m)}
     <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${count(m.context)} tokens in its KV cache</span></div>
-    <div class="meter" style="--c:${series(i)}"><i style="width:${fill(m) * 100}%"></i></div>
+    <div class="meter" style="--c:${c}"><i style="width:${fill(m) * 100}%"></i></div>
     <div class="note">${m.max_context > m.context
       ? `Can grow to ${count(m.max_context)} tokens`
       : "Sized for the longest context it can hold"}</div>
     <div class="facts">
       <div><small>KV reserved</small><span>${gb(perToken * m.context)}</span></div>
       <div><small>KV per token</small><span>${gb(perToken)}</span></div>
-      <div><small>Rate</small><span>${rates[i] == null ? "–" : `${rates[i].toFixed(1)} tok/s`}</span></div>
+      <div><small>Rate</small><span>${rateText(rates.get(key), "–")}</span></div>
     </div>
     <h4>Where it is held</h4>
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
@@ -578,9 +607,9 @@ function poolDetails(status, name) {
       <div><small>In use</small><span>${Math.round(share(used) * 100)}%</span></div></div>`}
     <h4>Held by</h4>
     <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
-    ${status.models.map((m, i) => {
+    ${status.models.map((m) => {
       const h = holding(m, name);
-      return `<tr><td><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
+      return `<tr><td><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
     }).join("")}
     </tbody></table>`;
 }
@@ -596,17 +625,18 @@ function drawPanel(status) {
 }
 
 /* ---- tooltip ---- */
-function showTip(event, pool, i) {
+function showTip(event, pool, key) {
   if (!current) return;
   const tip = $("tip");
-  if (i < 0) {
+  const m = findModel(current, key);
+  if (!m) {
     const p = current.pools.find((x) => x.name === pool);
     tip.innerHTML = `<b>${POOLS[pool].label}, free</b>
       <div class="row"><span>Free</span><span>${gb(p.capacity_bytes - poolTotals(current, p).used)}</span></div>
       <div class="more">Click for the whole pool</div>`;
   } else {
-    const m = current.models[i], h = holding(m, pool);
-    tip.innerHTML = `<b><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</b>
+    const h = holding(m, pool);
+    tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
       <div class="row"><span>${POOLS[pool].label}, weights</span><span>${gb(h.weights)}</span></div>
       <div class="row"><span>KV reserved</span><span>${gb(h.cache)}</span></div>
       <div class="row"><span>KV in use</span><span>${gb(h.held)}</span></div>
@@ -623,6 +653,20 @@ function hideTip() { $("tip").classList.remove("shown"); }
 
 /* ---- the poll ---- */
 let current = null;
+
+/* Drops everything drawn for a model no longer loaded. */
+function forget(key) {
+  rows.get(key)?.remove();
+  rows.delete(key);
+  for (const view of Object.values(squares)) {
+    view.blocks.get(key)?.remove();
+    view.blocks.delete(key);
+  }
+  growth.delete(key);
+  rates.delete(key);
+  if (selected.model === key) selected = {};
+}
+
 function draw(status, now) {
   drawSummary(status);
   drawPools(status);
@@ -641,6 +685,7 @@ async function poll() {
     const response = await fetch("/api/v1/state", { cache: "no-store" });
     if (!response.ok) throw new Error(`status ${response.status}`);
     current = await response.json();
+    track(current, forget);
     draw(current, performance.now());
     setLive(true, "live");
   } catch (e) {
