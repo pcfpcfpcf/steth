@@ -2,6 +2,8 @@ package llamacpp
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -9,6 +11,41 @@ import (
 )
 
 const child = "?autoload=false&model=qwen3.5-0.8b"
+
+// fakeProcesses is a fake process table: the server listening on each port.
+type fakeProcesses map[int]struct {
+	pid  int
+	args string
+	held map[string]uint64
+}
+
+func (p fakeProcesses) pidAt(port int) int { return p[port].pid }
+
+func (p fakeProcesses) cmdline(pid int) ([]string, error) {
+	for _, proc := range p {
+		if proc.pid == pid {
+			return strings.Fields(proc.args), nil
+		}
+	}
+	return nil, errors.New("no such process")
+}
+
+func (p fakeProcesses) memory(_ context.Context, pid int) (map[string]uint64, error) {
+	for _, proc := range p {
+		if proc.pid == pid {
+			return proc.held, nil
+		}
+	}
+	return nil, errors.New("no such process")
+}
+
+// newSource reads `url` with `procs` as the machine's processes; nil is a
+// machine where none can be seen.
+func newSource(url string, client *http.Client, procs fakeProcesses) *Source {
+	s := New(url, client)
+	s.proc = procs
+	return s
+}
 
 func TestReadMatchesSchema(t *testing.T) {
 	cases := map[string]map[string]string{
@@ -30,7 +67,7 @@ func TestReadMatchesSchema(t *testing.T) {
 	for name, fixtures := range cases {
 		t.Run(name, func(t *testing.T) {
 			server := enginetest.Serve(t, fixtures)
-			reading, err := New(server.URL, server.Client()).Read(context.Background())
+			reading, err := newSource(server.URL, server.Client(), nil).Read(context.Background())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -47,7 +84,7 @@ func TestSpeedsFromTwoReads(t *testing.T) {
 		"/slots":   "testdata/single.slots.json",
 		"/metrics": "testdata/metrics.1.txt",
 	})
-	source := New(server.URL, server.Client())
+	source := newSource(server.URL, server.Client(), nil)
 	first, err := source.Read(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -63,9 +100,49 @@ func TestSpeedsFromTwoReads(t *testing.T) {
 	enginetest.Match(t, second, "testdata/metrics.want.json")
 }
 
+// A server whose process can be seen: its memory, its command line, the
+// whole of a KV cache split between four slots, and no /slots read, since
+// that would keep it from sleeping.
+func TestVisibleProcess(t *testing.T) {
+	server := enginetest.Serve(t, map[string]string{
+		"/props":   "testdata/metrics.props.json",
+		"/metrics": "testdata/metrics.1.txt",
+	})
+	port := localPort(server.URL)
+	procs := fakeProcesses{port: {
+		pid:  4242,
+		args: "llama serve -m /models/Qwen3.5-0.8B-Q8_0.gguf -np 4 --sleep-idle-seconds 300 --metrics",
+		held: map[string]uint64{"vram": 1 << 30, "dram": 2 << 30},
+	}}
+	reading, err := newSource(server.URL, server.Client(), procs).Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	enginetest.Match(t, reading, "testdata/process.want.json")
+}
+
+func TestLaunch(t *testing.T) {
+	for args, want := range map[string][2]bool{ // unified KV, sleeps
+		"llama serve -m m.gguf":                         {true, false},
+		"llama serve -m m.gguf -np 2":                   {false, false},
+		"llama serve -m m.gguf -np 2 -kvu":              {true, false},
+		"llama serve -m m.gguf -no-kvu":                 {false, false},
+		"llama serve -m m.gguf --sleep-idle-seconds 60": {true, true},
+		"llama serve -m m.gguf --sleep-idle-seconds -1": {true, false},
+	} {
+		l := launch(strings.Fields(args))
+		if got := [2]bool{l.unifiedKV(), l.sleeps()}; got != want {
+			t.Errorf("%q: unified, sleeps = %v, expected %v", args, got, want)
+		}
+	}
+	if port := launch(strings.Fields("llama serve --port 41001")).port(); port != 41001 {
+		t.Errorf("port %d, expected 41001", port)
+	}
+}
+
 func TestReadFailsOnBadStatus(t *testing.T) {
 	server := enginetest.Serve(t, map[string]string{})
-	if _, err := New(server.URL, server.Client()).Read(context.Background()); err == nil {
+	if _, err := newSource(server.URL, server.Client(), nil).Read(context.Background()); err == nil {
 		t.Fatal("expected an error for a 404")
 	}
 }

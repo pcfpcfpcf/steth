@@ -4,6 +4,25 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **llama.cpp's own process, where steth can see it,** fills what HTTP does
+  not: its memory per pool (nvidia-smi per PID, resident host memory), its
+  command line as config, whether it sleeps when idle (then `/slots` is not
+  read, so steth no longer keeps it awake; KV held is then unknown), and
+  whether its slots split the KV cache (then context is per-slot `n_ctx` ×
+  slots, marked derived). Flags given as `LLAMA_ARG_*` environment
+  variables are not seen. A port whose process cannot be seen is looked up
+  again only every tenth read: finding out scans every process.
+- **Discovery is on by default.** A listening socket counts when its
+  process runs an engine and a probe of the port answers as that engine; a
+  socket of another user's process (Ollama runs as its own service user) is
+  probed only on the engines' default ports, so steth never sends HTTP to an
+  unknown service. A llama.cpp server started by a llama.cpp router is
+  skipped: the router reports it. Each found engine keeps its adapter across
+  rounds, so derived speeds survive rediscovery.
+- **The box is a source,** read first so its measured pool sizes win over
+  an engine's own view, and it reports what is in use by anything; the page
+  draws that remainder as "Other". A box without nvidia-smi reports no GPU
+  pool rather than failing. Only Linux is read so far.
 - **Speeds are the engine's, or none.** The ported page guessed a rate from
   KV cache growth; that counts a prompt's prefill as decoding, so it is
   gone. geode shows no speed until it reports one itself. llama.cpp speeds

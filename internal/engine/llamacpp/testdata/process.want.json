@@ -1,0 +1,80 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "Qwen3.5-0.8B-Q8_0",
+      "engine": "",
+      "endpoint": "",
+      "state": "serving",
+      "queued": 0,
+      "kv_tokens": null,
+      "context": 32768,
+      "max_context": null,
+      "pools": {
+        "dram": {
+          "weight_bytes": 2147483648,
+          "kv_bytes_per_token": null
+        },
+        "vram": {
+          "weight_bytes": 1073741824,
+          "kv_bytes_per_token": null
+        }
+      },
+      "running": 1,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": {
+        "build_info": {
+          "value": "b0-a469940",
+          "source": "/props"
+        },
+        "endpoint_metrics": {
+          "value": true,
+          "source": "/props"
+        },
+        "endpoint_slots": {
+          "value": true,
+          "source": "/props"
+        },
+        "launch args": {
+          "value": [
+            "llama",
+            "serve",
+            "-m",
+            "/models/Qwen3.5-0.8B-Q8_0.gguf",
+            "-np",
+            "4",
+            "--sleep-idle-seconds",
+            "300",
+            "--metrics"
+          ],
+          "source": "launch args"
+        },
+        "model_ftype": {
+          "value": "Q8_0",
+          "source": "/props"
+        },
+        "model_path": {
+          "value": "/models/Qwen3.5-0.8B-Q8_0.gguf",
+          "source": "/props"
+        },
+        "n_ctx": {
+          "value": 8192,
+          "source": "/props"
+        },
+        "total_slots": {
+          "value": 4,
+          "source": "/props"
+        }
+      },
+      "fidelity": {
+        "context": "derived",
+        "pools": "measured",
+        "queued": "measured",
+        "running": "measured"
+      },
+      "speed_history": null
+    }
+  ]
+}
