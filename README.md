@@ -21,9 +21,8 @@ never loads, unloads or configures a model.
 
 Needs Go 1.24 or later.
 
-    go build ./cmd/steth
+    make        # vet, test (with the race detector), build ./steth
     ./steth
-    go test ./...
 
 Then open http://127.0.0.1:7474. Click a model for its speeds over the last
 two minutes, its requests, and its settings as the engine reports them; a
