@@ -13,9 +13,9 @@ field's meaning does.
 {
   "schema": 1,
   "pools": [
-    {"name": "vram", "capacity_bytes": 4294967296},
-    {"name": "dram", "capacity_bytes": 16777216000},
-    {"name": "nvme", "capacity_bytes": null}
+    {"name": "vram", "capacity_bytes": 4294967296, "used_bytes": 3221225472},
+    {"name": "dram", "capacity_bytes": 16777216000, "used_bytes": 6442450944},
+    {"name": "nvme", "capacity_bytes": null, "used_bytes": null}
   ],
   "models": [
     {
@@ -51,6 +51,7 @@ field's meaning does.
 |---|---|---|
 | `name` | `"vram"`, `"dram"`, `"nvme"` | the memory: the GPU's, the host's, a drive weights stream from |
 | `capacity_bytes` | integer or null | its size; null where no size is known (a drive holds what it is given; an engine may not say); 0 when the box has none |
+| `used_bytes` | integer or null | what is in use by anything, models and every other process, as the operating system says; null where it does not. The first source to know it sets it |
 
 ## models[]
 

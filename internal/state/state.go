@@ -48,6 +48,9 @@ type State struct {
 type Pool struct {
 	Name          string  `json:"name"`
 	CapacityBytes *uint64 `json:"capacity_bytes"`
+	// UsedBytes is what is in use by anything, models or not, where the
+	// operating system says.
+	UsedBytes *uint64 `json:"used_bytes"`
 }
 
 // Model is one loaded model. A nil field is one its engine does not say.

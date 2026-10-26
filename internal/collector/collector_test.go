@@ -35,7 +35,7 @@ func TestPollMergesSources(t *testing.T) {
 		Models: []state.Model{{ID: "m1", State: state.Idle}},
 	}}
 	b := &fake{engine: "b", reading: state.Reading{
-		Pools:  []state.Pool{{Name: state.VRAM, CapacityBytes: capacity(8)}, {Name: state.DRAM, CapacityBytes: capacity(16)}},
+		Pools:  []state.Pool{{Name: state.VRAM, CapacityBytes: capacity(8), UsedBytes: capacity(3)}, {Name: state.DRAM, CapacityBytes: capacity(16)}},
 		Models: []state.Model{{ID: "m2", State: state.Serving}},
 	}}
 	broken := &fake{engine: "c", err: errors.New("connection refused")}
@@ -55,6 +55,9 @@ func TestPollMergesSources(t *testing.T) {
 	}
 	if *s.Pools[0].CapacityBytes != 4 {
 		t.Errorf("vram capacity %d, expected the first source's 4", *s.Pools[0].CapacityBytes)
+	}
+	if s.Pools[0].UsedBytes == nil || *s.Pools[0].UsedBytes != 3 {
+		t.Error("vram in use, unknown to the first source, not taken from the second")
 	}
 	if s.Pools[1].CapacityBytes == nil || *s.Pools[1].CapacityBytes != 16 {
 		t.Error("dram capacity unknown to the first source not taken from the second")

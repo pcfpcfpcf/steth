@@ -13,11 +13,14 @@ func read(t *testing.T, file string) []byte {
 	return text
 }
 
-func TestGPUTotalSumsEveryGPU(t *testing.T) {
-	for file, want := range map[string]uint64{"gpus.txt": 4096 << 20, "two-gpus.txt": 2 * 24576 << 20} {
-		got, err := parseGPUTotal(read(t, file))
-		if err != nil || got != want {
-			t.Errorf("%s: %d, %v; expected %d", file, got, err, want)
+func TestGPUMemorySumsEveryGPU(t *testing.T) {
+	for file, want := range map[string][2]uint64{
+		"gpus.txt":     {4096 << 20, 872 << 20},
+		"two-gpus.txt": {2 * 24576 << 20, (1024 + 20480) << 20},
+	} {
+		total, used, err := parseGPUMemory(read(t, file))
+		if err != nil || total != want[0] || used != want[1] {
+			t.Errorf("%s: %d, %d, %v; expected %d, %d", file, total, used, err, want[0], want[1])
 		}
 	}
 }

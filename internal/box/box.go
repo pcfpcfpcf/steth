@@ -38,11 +38,11 @@ func (Source) Endpoint() string { return Endpoint }
 // A box without nvidia-smi reports no GPU pool rather than failing: it may
 // have none, or one steth cannot read yet.
 func (Source) Read(ctx context.Context) (state.Reading, error) {
-	dram, err := hostMemory()
+	dram, dramUsed, err := hostMemory()
 	if err != nil {
 		return state.Reading{}, err
 	}
-	reading := state.Reading{Pools: []state.Pool{{Name: state.DRAM, CapacityBytes: &dram}}}
+	reading := state.Reading{Pools: []state.Pool{{Name: state.DRAM, CapacityBytes: &dram, UsedBytes: &dramUsed}}}
 	gpus, err := runNvidia(ctx, "--query-gpu=memory.total,memory.used")
 	if errors.Is(err, exec.ErrNotFound) {
 		return reading, nil
@@ -50,11 +50,11 @@ func (Source) Read(ctx context.Context) (state.Reading, error) {
 	if err != nil {
 		return state.Reading{}, err
 	}
-	vram, err := parseGPUTotal(gpus)
+	vram, vramUsed, err := parseGPUMemory(gpus)
 	if err != nil {
 		return state.Reading{}, err
 	}
-	reading.Pools = append(reading.Pools, state.Pool{Name: state.VRAM, CapacityBytes: &vram})
+	reading.Pools = append(reading.Pools, state.Pool{Name: state.VRAM, CapacityBytes: &vram, UsedBytes: &vramUsed})
 	return reading, nil
 }
 
@@ -109,17 +109,22 @@ func csvRows(out []byte) [][]string {
 	return rows
 }
 
-// parseGPUTotal sums every GPU's memory: steth draws them as one pool.
-func parseGPUTotal(out []byte) (uint64, error) {
-	var total uint64
+// parseGPUMemory sums every GPU's memory and what is in use of it: steth
+// draws them as one pool.
+func parseGPUMemory(out []byte) (total, used uint64, err error) {
 	for _, row := range csvRows(out) {
-		mib, err := strconv.ParseUint(row[0], 10, 64)
-		if err != nil {
-			return 0, fmt.Errorf("nvidia-smi memory.total: expected MiB, got %q", row[0])
+		if len(row) < 2 {
+			return 0, 0, fmt.Errorf("nvidia-smi: expected memory.total, memory.used; got %q", strings.Join(row, ","))
 		}
-		total += mib * mebibyte
+		for i, sum := range []*uint64{&total, &used} {
+			mib, err := strconv.ParseUint(row[i], 10, 64)
+			if err != nil {
+				return 0, 0, fmt.Errorf("nvidia-smi: expected MiB, got %q", row[i])
+			}
+			*sum += mib * mebibyte
+		}
 	}
-	return total, nil
+	return total, used, nil
 }
 
 // parseComputeApps maps each process to the GPU memory it holds, summed

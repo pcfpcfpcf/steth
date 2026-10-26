@@ -2,11 +2,13 @@
   "pools": [
     {
       "name": "vram",
-      "capacity_bytes": null
+      "capacity_bytes": null,
+      "used_bytes": null
     },
     {
       "name": "dram",
-      "capacity_bytes": null
+      "capacity_bytes": null,
+      "used_bytes": null
     }
   ],
   "models": [

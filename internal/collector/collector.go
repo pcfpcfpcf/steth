@@ -130,7 +130,7 @@ func (c *Collector) record(models []state.Model) {
 }
 
 // merge joins the sources' readings: pools by name, the first source to
-// know one's capacity setting it; models one after another, stamped with
+// know one's capacity, or what is in use, setting it; models one after another, stamped with
 // their source.
 func merge(sources []Source, results []result) *state.State {
 	s := &state.State{Schema: state.Schema, Pools: []state.Pool{}, Models: []state.Model{}, Sources: []state.Source{}}
@@ -145,8 +145,13 @@ func merge(sources []Source, results []result) *state.State {
 			at := slices.IndexFunc(s.Pools, func(q state.Pool) bool { return q.Name == p.Name })
 			if at < 0 {
 				s.Pools = append(s.Pools, p)
-			} else if s.Pools[at].CapacityBytes == nil {
-				s.Pools[at].CapacityBytes = p.CapacityBytes
+			} else {
+				if s.Pools[at].CapacityBytes == nil {
+					s.Pools[at].CapacityBytes = p.CapacityBytes
+				}
+				if s.Pools[at].UsedBytes == nil {
+					s.Pools[at].UsedBytes = p.UsedBytes
+				}
 			}
 		}
 		for _, m := range r.reading.Models {

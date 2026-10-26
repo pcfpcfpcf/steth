@@ -15,12 +15,22 @@ import (
 // tcpListen is the state /proc/net/tcp gives a listening socket.
 const tcpListen = "0A"
 
-func hostMemory() (uint64, error) {
+// hostMemory is the host's memory and what is in use: all of it but what
+// the kernel says it could hand out, page cache included.
+func hostMemory() (total, used uint64, err error) {
 	text, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return parseKibibytes(text, "MemTotal")
+	total, err = parseKibibytes(text, "MemTotal")
+	if err != nil {
+		return 0, 0, err
+	}
+	available, err := parseKibibytes(text, "MemAvailable")
+	if err != nil {
+		return 0, 0, err
+	}
+	return total, total - min(available, total), nil
 }
 
 func residentMemory(pid int) (uint64, error) {

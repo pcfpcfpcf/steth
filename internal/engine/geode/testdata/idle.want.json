@@ -2,15 +2,18 @@
   "pools": [
     {
       "name": "vram",
-      "capacity_bytes": 4026516480
+      "capacity_bytes": 4026516480,
+      "used_bytes": null
     },
     {
       "name": "dram",
-      "capacity_bytes": 26798312652
+      "capacity_bytes": 26798312652,
+      "used_bytes": null
     },
     {
       "name": "nvme",
-      "capacity_bytes": null
+      "capacity_bytes": null,
+      "used_bytes": null
     }
   ],
   "models": [
