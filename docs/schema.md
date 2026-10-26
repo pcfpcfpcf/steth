@@ -60,7 +60,7 @@ known (`id`, `engine`, `endpoint`, `state`).
 | `id` | string | the model's name as its engine gives it |
 | `engine` | string | `geode`, `ollama`, `llamacpp` or `vllm` |
 | `endpoint` | string | the engine's base URL |
-| `state` | `"serving"`, `"queued"`, `"moving"`, `"idle"`, `"loaded"` | serving a request; waiting for its turn; being loaded or placed again; loaded and doing nothing; loaded, its engine not saying whether it is busy. A new state may be added; readers show an unknown one as its raw name |
+| `state` | `"serving"`, `"queued"`, `"moving"`, `"idle"`, `"loaded"`, `"sleeping"` | serving a request; waiting for its turn; being loaded or placed again; loaded and doing nothing; loaded, its engine not saying whether it is busy; its memory freed while idle, to be loaded again on the next request. A new state may be added; readers show an unknown one as its raw name |
 | `queued` | integer or null | requests waiting for this model |
 | `kv_tokens` | integer or null | tokens its KV cache holds now |
 | `context` | integer or null | tokens its KV cache is sized for now |

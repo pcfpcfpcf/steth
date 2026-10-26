@@ -23,6 +23,9 @@ const (
 	Idle    = "idle"
 	// Loaded is a model whose engine does not say whether it is busy.
 	Loaded = "loaded"
+	// Sleeping is a model whose engine freed its memory while idle and
+	// loads it again on the next request.
+	Sleeping = "sleeping"
 )
 
 // How a non-null field was obtained.

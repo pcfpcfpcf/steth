@@ -262,7 +262,7 @@ const POOLS = {
 };
 /* A pool steth does not know shows as its raw name. */
 const poolInfo = (name) => POOLS[name] || { label: escape(name), detail: "" };
-const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle", loaded: "Loaded" };
+const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle", loaded: "Loaded", sleeping: "Sleeping" };
 /* Ink on a series fill: white, but near-black on yellow. */
 const SERIES_INK = ["#fff", "#fff", "#fff", "#0b0b0b", "#fff", "#fff", "#fff", "#fff"];
 
