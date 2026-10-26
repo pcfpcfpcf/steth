@@ -38,6 +38,9 @@ const (
 	probeTimeout = 500 * time.Millisecond
 )
 
+// version is set by a release build: -ldflags "-X main.version=v0.1.0".
+var version = "dev"
+
 // engines is every engine steth reads.
 var engines = []discover.Engine{
 	{Name: geode.Engine, Runs: geode.Runs, Ports: geode.Ports, Probe: geode.Probe,
@@ -80,7 +83,12 @@ func main() {
 	listen := flag.String("listen", defaultListen, "address to serve the page on")
 	flag.Var(&sources, "target", "an engine discovery cannot find, such as one on another machine, as ENGINE=URL; repeat for more")
 	find := flag.Bool("discover", true, "find the engines running on this machine")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("steth", version)
+		return
+	}
 	if len(sources) == 0 && !*find {
 		fmt.Fprintf(os.Stderr, "steth: with -discover=false, name an engine with --target ENGINE=URL (ENGINE one of %s)\n", engineNames())
 		os.Exit(2)
