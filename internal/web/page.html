@@ -145,6 +145,7 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .model.selected { box-shadow: inset 0 0 0 2px var(--c), var(--shadow); }
 .model .swatch { width: 14px; height: 14px; border-radius: 4px; grid-row: span 2; }
 .model-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.engine { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 8px; }
 .model-kv { grid-column: 2 / 4; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .meter { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--c) 16%, var(--surface)); overflow: hidden; min-width: 60px; }
 .meter i { display: block; height: 100%; border-radius: 3px; background: var(--c); width: 0; transition: width .6s cubic-bezier(.22, .8, .22, 1); }
@@ -503,7 +504,7 @@ function rowFor(m) {
   el.className = "model";
   el.style.setProperty("--c", series(colorOf(m)));
   el.innerHTML = `
-    <i class="swatch"></i><span class="model-name"></span><span class="state"><i></i><span></span></span>
+    <i class="swatch"></i><span class="model-name"><span class="id"></span><span class="engine"></span></span><span class="state"><i></i><span></span></span>
     <span class="model-kv"><span class="tokens"></span><span class="meter"><i></i></span><span class="rate"></span></span>`;
   el.addEventListener("click", () => select({ model: key }));
   $("models").appendChild(el);
@@ -533,8 +534,9 @@ function drawModels(status, now) {
     const el = rowFor(m);
     rates.set(keyOf(m), rate(m, now));
     el.classList.toggle("selected", selected.model === keyOf(m));
-    el.querySelector(".model-name").textContent = m.id;
-    el.querySelector(".model-name").title = m.id;
+    el.querySelector(".model-name .id").textContent = m.id;
+    el.querySelector(".model-name .engine").textContent = m.engine;
+    el.querySelector(".model-name").title = `${m.id} on ${m.engine} at ${m.endpoint}`;
     el.querySelector(".state").outerHTML = stateBadge(m);
     el.querySelector(".tokens").textContent = `KV ${count(m.kv_tokens)} / ${count(m.context)}`;
     el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
@@ -572,6 +574,7 @@ function modelDetails(status, key) {
   return `
     <div class="panel-head"><h3><i class="swatch" style="--c:${c}"></i>${escape(m.id)}</h3>
     <button class="close" aria-label="Close">×</button></div>
+    <div class="note">${escape(m.engine)} at ${escape(m.endpoint)}</div>
     ${stateBadge(m)}
     <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${count(m.context)} tokens in its KV cache</span></div>
     <div class="meter" style="--c:${c}"><i style="width:${fill(m) * 100}%"></i></div>
@@ -640,6 +643,7 @@ function showTip(event, pool, key) {
       <div class="row"><span>${POOLS[pool].label}, weights</span><span>${gb(h.weights)}</span></div>
       <div class="row"><span>KV reserved</span><span>${gb(h.cache)}</span></div>
       <div class="row"><span>KV in use</span><span>${gb(h.held)}</span></div>
+      <div class="row"><span>Engine</span><span>${escape(m.engine)}</span></div>
       <div class="row"><span>Context</span><span>${count(m.kv_tokens)} / ${count(m.context)}</span></div>
       <div class="more">Click for details</div>`;
   }
