@@ -1,0 +1,25 @@
+# HELP vllm:num_requests_running Number of requests in model execution batches.
+# TYPE vllm:num_requests_running gauge
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 3.0
+# HELP vllm:num_requests_waiting Number of requests waiting to be processed.
+# TYPE vllm:num_requests_waiting gauge
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 1.0
+# HELP vllm:engine_sleep_state Engine sleep state; awake = 0 means engine is sleeping; awake = 1 means engine is awake; weights_offloaded = 1 means sleep level 1; discard_all = 1 means sleep level 2.
+# TYPE vllm:engine_sleep_state gauge
+vllm:engine_sleep_state{engine="0",model_name="Qwen/Qwen3-8B",sleep_state="awake"} 1.0
+vllm:engine_sleep_state{engine="0",model_name="Qwen/Qwen3-8B",sleep_state="weights_offloaded"} 0.0
+vllm:engine_sleep_state{engine="0",model_name="Qwen/Qwen3-8B",sleep_state="discard_all"} 0.0
+# HELP vllm:kv_cache_usage_perc KV-cache usage. 1 means 100 percent usage.
+# TYPE vllm:kv_cache_usage_perc gauge
+vllm:kv_cache_usage_perc{engine="0",model_name="Qwen/Qwen3-8B"} 0.125
+# HELP vllm:prompt_tokens Number of prefill tokens processed.
+# TYPE vllm:prompt_tokens counter
+vllm:prompt_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} 5000.0
+vllm:prompt_tokens_created{engine="0",model_name="Qwen/Qwen3-8B"} 1.79303e+09
+# HELP vllm:generation_tokens Number of generation tokens processed.
+# TYPE vllm:generation_tokens counter
+vllm:generation_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} 1150.0
+vllm:generation_tokens_created{engine="0",model_name="Qwen/Qwen3-8B"} 1.79303e+09
+# HELP vllm:cache_config_info Information of the LLMEngine CacheConfig
+# TYPE vllm:cache_config_info gauge
+vllm:cache_config_info{block_size="16",user_specified_block_size="False",kv_cache_layout="None",prefix_match_unit="None",gpu_memory_utilization="0.9",cache_dtype="auto",is_attention_free="False",num_gpu_blocks_override="None",sliding_window="None",enable_prefix_caching="True",prefix_caching_hash_algo="sha256",num_gpu_blocks="4096",num_cpu_blocks="None",kv_cache_size_tokens="65536",kv_cache_max_concurrency="2.0",kv_cache_memory_bytes="None",kv_offloading_size="None",engine="0"} 1.0

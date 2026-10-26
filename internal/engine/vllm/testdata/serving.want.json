@@ -1,0 +1,62 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "Qwen/Qwen3-8B",
+      "engine": "",
+      "endpoint": "",
+      "state": "serving",
+      "queued": 1,
+      "kv_tokens": 8192,
+      "context": 65536,
+      "max_context": null,
+      "pools": null,
+      "running": 3,
+      "decode_tps": 150,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": {
+        "block_size": {
+          "value": "16",
+          "source": "/metrics"
+        },
+        "cache_dtype": {
+          "value": "auto",
+          "source": "/metrics"
+        },
+        "enable_prefix_caching": {
+          "value": "True",
+          "source": "/metrics"
+        },
+        "gpu_memory_utilization": {
+          "value": "0.9",
+          "source": "/metrics"
+        },
+        "kv_cache_size_tokens": {
+          "value": "65536",
+          "source": "/metrics"
+        },
+        "max_model_len": {
+          "value": 32768,
+          "source": "/v1/models"
+        },
+        "num_gpu_blocks": {
+          "value": "4096",
+          "source": "/metrics"
+        },
+        "root": {
+          "value": "/models/Qwen3-8B",
+          "source": "/v1/models"
+        }
+      },
+      "fidelity": {
+        "context": "measured",
+        "decode_tps": "derived",
+        "kv_tokens": "derived",
+        "queued": "measured",
+        "running": "measured"
+      },
+      "speed_history": null
+    }
+  ]
+}
