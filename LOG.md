@@ -4,6 +4,14 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **Owed after the first build.** Live checks of llama.cpp and vLLM (see
+  their entries); the box on macOS (sysctl, IOKit) and Windows; geode
+  reporting decode and prefill rates on `/v1/pool` and a `"schema"` field,
+  in geode's own repository; vLLM KV usage under data parallelism.
+- **Release from a tag.** `scripts/release.sh` builds six targets with
+  `CGO_ENABLED=0` and refuses a version with no CHANGELOG section; the
+  release workflow runs it and publishes with that section as the notes.
+  No release tool (goreleaser) for a dozen lines of shell.
 - **vLLM is written from its source at commit 442f3d9;** this GPU (compute
   capability 5.0) cannot run it, so the live check is owed. The plan's
   metric names hold: `num_requests_running`/`waiting`,
