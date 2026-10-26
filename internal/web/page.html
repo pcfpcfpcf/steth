@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>steth</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --track: #f0efec;
+  --ring: rgba(11, 11, 11, 0.10);
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 8px 24px rgba(11, 11, 11, 0.04);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --track: #232321;
+    --ring: rgba(255, 255, 255, 0.10);
+    --shadow: none;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --track: #232321;
+  --ring: rgba(255, 255, 255, 0.10);
+  --shadow: none;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .4s, color .4s;
+}
+button { font: inherit; color: inherit; }
+main { max-width: 1240px; margin: 0 auto; padding: 40px 32px 56px; }
+@media (max-width: 640px) { main { padding: 24px 16px 32px; } }
+
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+@media (max-width: 640px) { header { flex-direction: column; } }
+.brand { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { margin: 6px 0 0; font-size: clamp(24px, 3.4vw, 34px); font-weight: 600; letter-spacing: -.015em; }
+.summary { margin: 8px 0 0; color: var(--ink-2); min-height: 1.45em; }
+.controls { display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding-top: 4px; }
+.live { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.live i, .state i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.live.on i { background: var(--good); animation: breathe 2.4s ease-in-out infinite; }
+.live.off i { background: var(--critical); }
+@keyframes breathe { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--good) 18%, transparent); } }
+.theme { display: flex; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--ring); }
+.theme button { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+.theme button[aria-pressed="true"] { background: var(--track); color: var(--ink); }
+
+section { margin-top: 36px; }
+h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* ---- the pools: one square each, filled by the models ---- */
+.pools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 900px) { .pools { grid-template-columns: 1fr; max-width: 460px; } }
+.pool-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; background: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer; }
+.pool-name { font-weight: 600; font-size: 16px; }
+.pool-name small { font-weight: 400; color: var(--muted); font-size: 12px; letter-spacing: .04em; margin-left: 6px; }
+.pool-figure { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.square {
+  position: relative; aspect-ratio: 1; border-radius: 14px; background: var(--track);
+  box-shadow: inset 0 0 0 1px var(--ring); overflow: hidden;
+}
+.block, .free {
+  position: absolute; padding: 0; border: 2px solid var(--surface); border-radius: 10px;
+  transition: left .9s cubic-bezier(.22, .8, .22, 1), top .9s cubic-bezier(.22, .8, .22, 1),
+              width .9s cubic-bezier(.22, .8, .22, 1), height .9s cubic-bezier(.22, .8, .22, 1),
+              opacity .3s;
+  overflow: hidden; cursor: pointer; text-align: left;
+}
+.block { background: var(--c); color: var(--on-c, #fff); }
+.free { background: transparent; border-color: transparent; color: var(--muted); }
+.block.gone, .free.gone { opacity: 0; pointer-events: none; border-width: 0; }
+.free::after { content: ""; position: absolute; inset: 4px; border: 1px dashed var(--grid); border-radius: 8px; }
+.block:focus-visible, .free:focus-visible, .pool-head:focus-visible, .model:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.label { position: absolute; left: 10px; top: 8px; right: 10px; pointer-events: none; line-height: 1.25; transition: opacity .3s; }
+.label b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.label span { font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; }
+.free .label { top: auto; bottom: 10px; }
+.kv {
+  position: absolute; right: 0; bottom: 0; border-radius: 6px 0 0 0;
+  background: color-mix(in srgb, var(--surface) 72%, var(--c));
+  transition: width .9s cubic-bezier(.22, .8, .22, 1), height .9s cubic-bezier(.22, .8, .22, 1);
+  overflow: hidden; pointer-events: none;
+}
+.kv i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: color-mix(in srgb, var(--surface) 30%, var(--c)); transition: height .6s cubic-bezier(.22, .8, .22, 1); }
+.kv em { position: absolute; left: 6px; bottom: 4px; font-style: normal; font-size: 11px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.block.moving::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(135deg, transparent 0 10px, color-mix(in srgb, var(--surface) 40%, transparent) 10px 20px);
+  background-size: 28.28px 28.28px; animation: slide .8s linear infinite;
+}
+@keyframes slide { to { background-position: 28.28px 0; } }
+.block.serving { animation: glow 1.8s ease-in-out infinite; }
+@keyframes glow { 50% { filter: brightness(1.1) saturate(1.08); } }
+.square.focused .block:not(.selected), .square.focused .free { opacity: .22; }
+.empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); font-size: 13px; pointer-events: none; }
+.hint { margin-top: 18px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.hint span { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--c); flex-shrink: 0; }
+.swatch.kv-key { background: color-mix(in srgb, var(--surface) 72%, var(--muted)); box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--surface) 30%, var(--muted)); }
+.swatch.free-key { background: none; border: 1px dashed var(--muted); }
+
+/* ---- the models, one row each ---- */
+.models { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .models { grid-template-columns: 1fr; } }
+.model {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 14px;
+  padding: 16px 18px; border-radius: 14px; border: 0; background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--ring), var(--shadow); cursor: pointer; text-align: left;
+  transition: box-shadow .3s, opacity .3s;
+}
+.model.selected { box-shadow: inset 0 0 0 2px var(--c), var(--shadow); }
+.model .swatch { width: 14px; height: 14px; border-radius: 4px; grid-row: span 2; }
+.model-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-kv { grid-column: 2 / 4; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.meter { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--c) 16%, var(--surface)); overflow: hidden; min-width: 60px; }
+.meter i { display: block; height: 100%; border-radius: 3px; background: var(--c); width: 0; transition: width .6s cubic-bezier(.22, .8, .22, 1); }
+.state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px 3px 8px; border-radius: 999px; background: var(--track); color: var(--ink-2); white-space: nowrap; }
+.state.serving i { background: var(--good); animation: breathe 1.6s ease-in-out infinite; }
+.state.queued i { background: var(--warning); }
+.state.moving i { background: var(--serious); border-radius: 2px; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- details: a panel from the right ---- */
+.scrim { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+.scrim.shown { pointer-events: auto; }
+.panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); z-index: 21;
+  background: var(--surface); visibility: hidden;
+  transform: translateX(100%); transition: transform .4s cubic-bezier(.22, .8, .22, 1), visibility 0s .4s;
+  overflow-y: auto; padding: 28px 28px 40px;
+}
+.panel.shown {
+  transform: none; visibility: visible; transition: transform .4s cubic-bezier(.22, .8, .22, 1);
+  box-shadow: -1px 0 0 var(--ring), -16px 0 48px rgba(0, 0, 0, .12);
+}
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.panel h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; word-break: break-word; }
+.panel h3 .swatch { width: 14px; height: 14px; border-radius: 4px; }
+.close { border: 0; background: var(--track); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1; color: var(--ink-2); flex-shrink: 0; }
+.panel .state { margin-top: 12px; }
+.big { margin-top: 24px; }
+.big b { font-size: 44px; font-weight: 600; letter-spacing: -.02em; line-height: 1; }
+.big span { color: var(--ink-2); margin-left: 8px; }
+.panel .meter { height: 10px; border-radius: 5px; margin-top: 14px; }
+.panel .meter i { border-radius: 5px; }
+.note { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
+.facts small, .panel h4 { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0; }
+.facts span { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.panel h4 { margin: 28px 0 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--grid); }
+td { padding: 9px 0; border-bottom: 1px solid var(--grid); }
+th:not(:first-child), td:not(:first-child) { text-align: right; }
+td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
+
+.tip {
+  position: fixed; pointer-events: none; z-index: 30; min-width: 200px;
+  background: var(--surface); color: var(--ink); border-radius: 10px; padding: 10px 12px;
+  box-shadow: inset 0 0 0 1px var(--ring), 0 8px 28px rgba(0, 0, 0, .16);
+  font-size: 13px; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s;
+}
+.tip.shown { opacity: 1; transform: none; }
+.tip b { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.tip .row { display: flex; justify-content: space-between; gap: 18px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tip .row span:last-child { color: var(--ink); }
+.tip .more { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="brand">steth</div>
+      <h1>What this box holds</h1>
+      <p class="summary" id="summary"></p>
+    </div>
+    <div class="controls">
+      <div class="live" id="live"><i></i><span>connecting</span></div>
+      <div class="theme" role="group" aria-label="Theme">
+        <button data-theme="auto">Auto</button>
+        <button data-theme="light">Light</button>
+        <button data-theme="dark">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Memory pools</h2>
+    <div class="pools" id="pools"></div>
+    <div class="hint">
+      <span><i class="swatch kv-key"></i>KV cache: its box is what is reserved, the darker part what is in use</span>
+      <span><i class="swatch free-key"></i>Free</span>
+      <span>Click a model or a pool for details</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Models</h2>
+    <div class="models" id="models"></div>
+  </section>
+</main>
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-live="polite"></aside>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+const POLL_MS = 1000;
+/* Rates are read off how fast a cache grows, over this much of the past. */
+const RATE_WINDOW_MS = 4000;
+/* A block shows its name only where the name fits. */
+const LABEL_MIN_PX = { width: 84, height: 46 };
+const KV_LABEL_MIN_PX = { width: 64, height: 22 };
+const POOLS = {
+  vram: { label: "GPU", detail: "VRAM" },
+  dram: { label: "Host memory", detail: "DRAM" },
+  nvme: { label: "Drive", detail: "NVMe, streamed" },
+};
+const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle" };
+/* Ink on a series fill: white, but near-black on yellow. */
+const SERIES_INK = ["#fff", "#fff", "#fff", "#0b0b0b", "#fff", "#fff", "#fff", "#fff"];
+
+const $ = (id) => document.getElementById(id);
+const series = (i) => `var(--s${(i % 8) + 1})`;
+const gb = (bytes) => {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(bytes >= 1e11 ? 0 : 1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
+  if (bytes > 0) return `${(bytes / 1e3).toFixed(0)} KB`;
+  return "0 GB";
+};
+const count = (n) => Math.round(n).toLocaleString("en-US");
+const short = (n) => (n >= 1e3 ? `${+(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(Math.round(n)));
+const escape = (text) => String(text).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
+
+/* ---- theme ---- */
+function applyTheme(choice) {
+  if (choice === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = choice;
+  for (const b of document.querySelectorAll(".theme button"))
+    b.setAttribute("aria-pressed", String(b.dataset.theme === choice));
+  try { localStorage.setItem("steth-theme", choice); } catch (e) {}
+}
+for (const b of document.querySelectorAll(".theme button"))
+  b.addEventListener("click", () => applyTheme(b.dataset.theme));
+let savedTheme = "auto";
+try { savedTheme = localStorage.getItem("steth-theme") || "auto"; } catch (e) {}
+applyTheme(savedTheme);
+
+/* ---- numbers that move to their new value ---- */
+const tweens = new WeakMap();
+function tween(el, to, format) {
+  const from = tweens.has(el) ? tweens.get(el).value : to;
+  const start = performance.now(), length = 600;
+  const state = { value: from };
+  tweens.set(el, state);
+  const step = (now) => {
+    if (tweens.get(el) !== state) return;
+    const t = Math.min(1, (now - start) / length);
+    state.value = from + (to - from) * (1 - Math.pow(1 - t, 3));
+    el.textContent = format(state.value);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ---- what one model holds in one pool ---- */
+function holding(model, pool) {
+  const at = model.pools[pool] || { weight_bytes: 0, kv_bytes_per_token: 0 };
+  return {
+    weights: at.weight_bytes,
+    cache: at.kv_bytes_per_token * model.context,
+    held: at.kv_bytes_per_token * Math.min(model.kv_tokens, model.context),
+  };
+}
+const whole = (h) => h.weights + h.cache;
+
+/* What a pool is drawn at: its capacity, or for the drive, which holds
+   whatever it is given, what streams from it. */
+function poolTotals(status, pool) {
+  const used = sum(status.models, (m) => whole(holding(m, pool.name)));
+  return { used, scale: Math.max(pool.capacity_bytes ?? used, used) };
+}
+
+/* An ordered treemap: the items keep their order, so a model keeps its
+   place in a square as the pool is divided again, and each split is along
+   the longer side, so blocks stay near square. Coordinates are fractions of
+   the square. */
+function treemap(items, x, y, w, h, out) {
+  const live = items.filter((it) => it.area > 0);
+  if (live.length === 0) return out;
+  if (live.length === 1) { out.push({ ...live[0], x, y, w, h }); return out; }
+  const total = sum(live, (it) => it.area);
+  let best = 1, bestGap = Infinity, acc = 0;
+  for (let k = 1; k < live.length; k++) {
+    acc += live[k - 1].area;
+    const gap = Math.abs(acc - total / 2);
+    if (gap < bestGap) { best = k; bestGap = gap; }
+  }
+  const left = live.slice(0, best), right = live.slice(best);
+  const share = sum(left, (it) => it.area) / total;
+  if (w >= h) {
+    treemap(left, x, y, w * share, h, out);
+    treemap(right, x + w * share, y, w * (1 - share), h, out);
+  } else {
+    treemap(left, x, y, w, h * share, out);
+    treemap(right, x, y + h * share, w, h * (1 - share), out);
+  }
+  return out;
+}
+
+/* The KV box inside a model's block: a square in its corner with the
+   cache's share of the block's area, or a strip along its foot where a
+   square would not fit. Fractions of the block. */
+function kvBox(block, share) {
+  const side = Math.sqrt(share * block.w * block.h);
+  if (side <= Math.min(block.w, block.h)) return { w: side / block.w, h: side / block.h };
+  return block.w >= block.h ? { w: share, h: 1 } : { w: 1, h: share };
+}
+
+/* ---- the squares ---- */
+const squares = {};
+function square(pool) {
+  if (squares[pool]) return squares[pool];
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <button class="pool-head"><span class="pool-name">${POOLS[pool].label}<small>${POOLS[pool].detail}</small></span>
+    <span class="pool-figure"></span></button>
+    <div class="square" role="group" aria-label="${POOLS[pool].label}"><div class="empty"></div></div>`;
+  $("pools").appendChild(wrap);
+  const view = {
+    el: wrap.querySelector(".square"), figure: wrap.querySelector(".pool-figure"),
+    empty: wrap.querySelector(".empty"), blocks: [], free: null,
+  };
+  wrap.querySelector(".pool-head").addEventListener("click", () => select({ pool }));
+  squares[pool] = view;
+  return view;
+}
+
+function blockFor(view, pool, i) {
+  if (view.blocks[i]) return view.blocks[i];
+  const el = document.createElement("button");
+  el.className = "block";
+  el.style.setProperty("--c", series(i));
+  el.style.setProperty("--on-c", SERIES_INK[i % 8]);
+  el.innerHTML = `<div class="kv"><i></i><em></em></div><div class="label"><b></b><span></span></div>`;
+  el.addEventListener("mousemove", (e) => showTip(e, pool, i));
+  el.addEventListener("mouseleave", hideTip);
+  el.addEventListener("click", () => select({ model: i }));
+  view.el.appendChild(el);
+  view.blocks[i] = el;
+  return el;
+}
+
+function freeFor(view, pool) {
+  if (view.free) return view.free;
+  const el = document.createElement("button");
+  el.className = "free";
+  el.innerHTML = `<div class="label"><b>Free</b><span></span></div>`;
+  el.addEventListener("mousemove", (e) => showTip(e, pool, -1));
+  el.addEventListener("mouseleave", hideTip);
+  el.addEventListener("click", () => select({ pool }));
+  view.el.appendChild(el);
+  view.free = el;
+  return el;
+}
+
+const place = (el, r) => {
+  el.style.left = `${r.x * 100}%`;
+  el.style.top = `${r.y * 100}%`;
+  el.style.width = `${r.w * 100}%`;
+  el.style.height = `${r.h * 100}%`;
+};
+
+function drawPools(status) {
+  for (const pool of status.pools) {
+    const view = square(pool.name);
+    const { used, scale } = poolTotals(status, pool);
+    const drive = pool.capacity_bytes == null, absent = pool.capacity_bytes === 0;
+    tween(view.figure, used, (bytes) => drive
+      ? (bytes > 0 ? `${gb(bytes)} streamed` : "nothing streamed")
+      : absent ? "none" : `${gb(bytes)} of ${gb(pool.capacity_bytes)}`);
+
+    const items = status.models.map((m, i) => ({ key: i, area: whole(holding(m, pool.name)) }));
+    if (!drive) items.push({ key: -1, area: pool.capacity_bytes - used });
+    const placed = treemap(items, 0, 0, 1, 1, []);
+    const side = view.el.clientWidth;
+
+    status.models.forEach((m, i) => {
+      const el = blockFor(view, pool.name, i);
+      const r = placed.find((p) => p.key === i);
+      const h = holding(m, pool.name);
+      el.classList.toggle("gone", !r);
+      el.tabIndex = r ? 0 : -1;
+      el.setAttribute("aria-hidden", String(!r));
+      if (!r) { el.style.width = el.style.height = "0"; return; }
+      place(el, r);
+      el.classList.toggle("moving", m.state === "moving");
+      el.classList.toggle("serving", m.state === "serving");
+      el.classList.toggle("selected", selected.model === i);
+      el.setAttribute("aria-label", `${m.id}: ${gb(whole(h))} in ${POOLS[pool.name].label}`);
+      const label = el.querySelector(".label");
+      label.querySelector("b").textContent = m.id;
+      label.querySelector("span").textContent = gb(whole(h));
+      label.style.opacity = r.w * side >= LABEL_MIN_PX.width && r.h * side >= LABEL_MIN_PX.height ? 1 : 0;
+
+      const kv = el.querySelector(".kv");
+      const share = whole(h) > 0 ? h.cache / whole(h) : 0;
+      const box = kvBox(r, share);
+      kv.style.width = `${box.w * 100}%`;
+      kv.style.height = `${box.h * 100}%`;
+      kv.firstElementChild.style.height = `${h.cache > 0 ? (h.held / h.cache) * 100 : 0}%`;
+      const fits = box.w * r.w * side >= KV_LABEL_MIN_PX.width && box.h * r.h * side >= KV_LABEL_MIN_PX.height;
+      kv.lastElementChild.textContent = fits ? `KV ${short(m.kv_tokens)}/${short(m.context)}` : "";
+    });
+
+    const free = placed.find((p) => p.key === -1);
+    if (!drive && !absent) {
+      const el = freeFor(view, pool.name);
+      el.classList.toggle("gone", !free);
+      if (free) place(el, free); else el.style.width = el.style.height = "0";
+      el.querySelector("span").textContent = gb(pool.capacity_bytes - used);
+      el.querySelector(".label").style.opacity =
+        free && free.w * side >= LABEL_MIN_PX.width && free.h * side >= LABEL_MIN_PX.height ? 1 : 0;
+    }
+    view.el.classList.toggle("focused", selected.model != null);
+    view.empty.textContent = used > 0 ? "" : drive ? "Nothing streams: every model is held in memory"
+      : absent ? `No ${POOLS[pool.name].label.toLowerCase()} on this box` : "Empty";
+  }
+}
+
+/* ---- the model rows ---- */
+const rows = [];
+const growth = []; /* per model: recent [time, cache tokens] while it serves */
+function rowFor(i) {
+  if (rows[i]) return rows[i];
+  const el = document.createElement("button");
+  el.className = "model";
+  el.style.setProperty("--c", series(i));
+  el.innerHTML = `
+    <i class="swatch"></i><span class="model-name"></span><span class="state"><i></i><span></span></span>
+    <span class="model-kv"><span class="tokens"></span><span class="meter"><i></i></span><span class="rate"></span></span>`;
+  el.addEventListener("click", () => select({ model: i }));
+  $("models").appendChild(el);
+  rows[i] = el;
+  return el;
+}
+
+function rate(i, model, now) {
+  const seen = (growth[i] ||= []);
+  if (model.state !== "serving") { seen.length = 0; return null; }
+  seen.push([now, model.kv_tokens]);
+  while (seen.length > 2 && now - seen[0][0] > RATE_WINDOW_MS) seen.shift();
+  const [t0, n0] = seen[0];
+  if (now - t0 < POLL_MS / 2 || model.kv_tokens < n0) return null;
+  return ((model.kv_tokens - n0) / (now - t0)) * 1000;
+}
+
+const stateBadge = (m) =>
+  `<span class="state ${m.state}"><i></i><span>${STATES[m.state]}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
+const fill = (m) => (m.context > 0 ? Math.min(1, m.kv_tokens / m.context) : 0);
+
+const rates = [];
+function drawModels(status, now) {
+  status.models.forEach((m, i) => {
+    const el = rowFor(i);
+    rates[i] = rate(i, m, now);
+    el.classList.toggle("selected", selected.model === i);
+    el.querySelector(".model-name").textContent = m.id;
+    el.querySelector(".model-name").title = m.id;
+    el.querySelector(".state").outerHTML = stateBadge(m);
+    el.querySelector(".tokens").textContent = `KV ${count(m.kv_tokens)} / ${count(m.context)}`;
+    el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
+    el.querySelector(".rate").textContent = rates[i] == null ? "" : `${rates[i].toFixed(1)} tok/s`;
+  });
+}
+
+function drawSummary(status) {
+  const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
+  const moving = status.models.filter((m) => m.state === "moving").length;
+  const queued = sum(status.models, (m) => m.queued);
+  const parts = [`${status.models.length} model${status.models.length === 1 ? "" : "s"} on this box`];
+  parts.push(serving.length ? `serving ${serving.join(" and ")}` : "nothing being served");
+  if (queued) parts.push(`${queued} request${queued === 1 ? "" : "s"} waiting`);
+  if (moving) parts.push(`${moving} moving`);
+  $("summary").textContent = parts.join(" · ");
+}
+
+/* ---- details ---- */
+let selected = {};
+function select(what) {
+  selected = what;
+  hideTip();
+  if (current) draw(current, performance.now());
+}
+function closePanel() { select({}); }
+$("scrim").addEventListener("click", closePanel);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel(); });
+
+function modelDetails(status, i) {
+  const m = status.models[i];
+  const perToken = sum(Object.values(m.pools), (p) => p.kv_bytes_per_token);
+  const pools = status.pools.map((p) => ({ name: p.name, h: holding(m, p.name) }));
+  return `
+    <div class="panel-head"><h3><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</h3>
+    <button class="close" aria-label="Close">×</button></div>
+    ${stateBadge(m)}
+    <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${count(m.context)} tokens in its KV cache</span></div>
+    <div class="meter" style="--c:${series(i)}"><i style="width:${fill(m) * 100}%"></i></div>
+    <div class="note">${m.max_context > m.context
+      ? `Can grow to ${count(m.max_context)} tokens`
+      : "Sized for the longest context it can hold"}</div>
+    <div class="facts">
+      <div><small>KV reserved</small><span>${gb(perToken * m.context)}</span></div>
+      <div><small>KV per token</small><span>${gb(perToken)}</span></div>
+      <div><small>Rate</small><span>${rates[i] == null ? "–" : `${rates[i].toFixed(1)} tok/s`}</span></div>
+    </div>
+    <h4>Where it is held</h4>
+    <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
+    ${pools.map(({ name, h }) => `<tr><td>${POOLS[name].label}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${gb(h.held)}</td></tr>`).join("")}
+    <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${gb(sum(pools, (p) => p.h.cache))}</b></td><td><b>${gb(sum(pools, (p) => p.h.held))}</b></td></tr>
+    </tbody></table>`;
+}
+
+function poolDetails(status, name) {
+  const pool = status.pools.find((p) => p.name === name);
+  if (pool.capacity_bytes === 0)
+    return `<div class="panel-head"><h3>${POOLS[name].label}</h3><button class="close" aria-label="Close">×</button></div>
+      <div class="note">No ${POOLS[name].label.toLowerCase()} on this box: every model is held elsewhere.</div>`;
+  const { used } = poolTotals(status, pool);
+  const drive = pool.capacity_bytes == null;
+  const of = drive ? used : pool.capacity_bytes;
+  const share = (bytes) => (of > 0 ? bytes / of : 0);
+  return `
+    <div class="panel-head"><h3>${POOLS[name].label}</h3><button class="close" aria-label="Close">×</button></div>
+    <div class="note">${POOLS[name].detail}</div>
+    <div class="big"><b>${gb(used)}</b><span>${drive ? "streamed from the drive" : `of ${gb(pool.capacity_bytes)} in use`}</span></div>
+    ${drive ? "" : `<div class="facts"><div><small>Free</small><span>${gb(pool.capacity_bytes - used)}</span></div>
+      <div><small>In use</small><span>${Math.round(share(used) * 100)}%</span></div></div>`}
+    <h4>Held by</h4>
+    <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
+    ${status.models.map((m, i) => {
+      const h = holding(m, name);
+      return `<tr><td><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
+    }).join("")}
+    </tbody></table>`;
+}
+
+function drawPanel(status) {
+  const open = selected.model != null || selected.pool != null;
+  $("panel").classList.toggle("shown", open);
+  $("scrim").classList.toggle("shown", open);
+  if (!open) return;
+  $("panel").innerHTML = selected.model != null
+    ? modelDetails(status, selected.model) : poolDetails(status, selected.pool);
+  $("panel").querySelector(".close").addEventListener("click", closePanel);
+}
+
+/* ---- tooltip ---- */
+function showTip(event, pool, i) {
+  if (!current) return;
+  const tip = $("tip");
+  if (i < 0) {
+    const p = current.pools.find((x) => x.name === pool);
+    tip.innerHTML = `<b>${POOLS[pool].label}, free</b>
+      <div class="row"><span>Free</span><span>${gb(p.capacity_bytes - poolTotals(current, p).used)}</span></div>
+      <div class="more">Click for the whole pool</div>`;
+  } else {
+    const m = current.models[i], h = holding(m, pool);
+    tip.innerHTML = `<b><i class="swatch" style="--c:${series(i)}"></i>${escape(m.id)}</b>
+      <div class="row"><span>${POOLS[pool].label}, weights</span><span>${gb(h.weights)}</span></div>
+      <div class="row"><span>KV reserved</span><span>${gb(h.cache)}</span></div>
+      <div class="row"><span>KV in use</span><span>${gb(h.held)}</span></div>
+      <div class="row"><span>Context</span><span>${count(m.kv_tokens)} / ${count(m.context)}</span></div>
+      <div class="more">Click for details</div>`;
+  }
+  const x = Math.min(event.clientX + 14, innerWidth - tip.offsetWidth - 12);
+  const y = event.clientY - tip.offsetHeight - 14;
+  tip.style.left = `${x}px`;
+  tip.style.top = `${y < 8 ? event.clientY + 18 : y}px`;
+  tip.classList.add("shown");
+}
+function hideTip() { $("tip").classList.remove("shown"); }
+
+/* ---- the poll ---- */
+let current = null;
+function draw(status, now) {
+  drawSummary(status);
+  drawPools(status);
+  drawModels(status, now);
+  drawPanel(status);
+}
+
+function setLive(on, text) {
+  $("live").className = `live ${on ? "on" : "off"}`;
+  $("live").lastElementChild.textContent = text;
+}
+
+async function poll() {
+  const next = performance.now() + POLL_MS;
+  try {
+    const response = await fetch("/api/v1/state", { cache: "no-store" });
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    current = await response.json();
+    draw(current, performance.now());
+    setLive(true, "live");
+  } catch (e) {
+    setLive(false, "steth is not answering");
+  }
+  setTimeout(poll, Math.max(0, next - performance.now()));
+}
+addEventListener("resize", () => current && drawPools(current));
+poll();
+</script>
+</body>
+</html>
