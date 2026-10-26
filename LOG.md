@@ -4,6 +4,16 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **llama.cpp checked live** (`llama serve` b10217, two slots, with
+  `--metrics`). Every field and metric name read from source is there. Its
+  default port in this build is 8080. With `-np 2` the server reports
+  `kv_unified = false` and 4096 tokens per slot, as steth derives. A slot's
+  `n_prompt_tokens` counts generated tokens too, so KV held is right. But
+  the token counters in `/metrics` move only when a request ends, so a
+  speed derived from them appears only on the poll a request finishes. The
+  live decode speed now comes from each busy slot's `n_decoded` growth
+  between reads (26.4 tok/s live against 26.8 from the counters afterwards);
+  the counters stay the fallback, and still give prefill.
 - **Owed after the first build.** Live checks of llama.cpp and vLLM (see
   their entries); the box on macOS (sysctl, IOKit) and Windows; geode
   reporting decode and prefill rates on `/v1/pool` and a `"schema"` field,

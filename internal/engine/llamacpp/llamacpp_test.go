@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/enginetest"
 	"github.com/pcfpcfpcf/steth/internal/engine/local"
@@ -93,6 +94,32 @@ func TestVisibleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	enginetest.Match(t, reading, "testdata/process.want.json")
+}
+
+// While a request generates, its speed comes from the slot's decoded tokens:
+// 124, then 152, 1.06 s apart, recorded from a running server.
+func TestLiveDecodeFromSlots(t *testing.T) {
+	server := enginetest.Serve(t, map[string]string{
+		"/props":   "testdata/live.props.json",
+		"/slots":   "testdata/live.slots.gen.1.json",
+		"/metrics": "testdata/live.metrics.1.txt",
+	})
+	source := newSource(server.URL, server.Client(), nil)
+	clock := time.Date(2026, 10, 26, 19, 0, 0, 0, time.UTC)
+	source.now = func() time.Time { return clock }
+	if _, err := source.Read(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	server.Answer("/slots", "testdata/live.slots.gen.2.json")
+	clock = clock.Add(1060819149 * time.Nanosecond)
+	reading, err := source.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := reading.Models[0]
+	if m.State != "serving" || m.DecodeTPS == nil || *m.DecodeTPS < 26.3 || *m.DecodeTPS > 26.5 {
+		t.Errorf("state %s, decode %v; expected serving at 28 tokens / 1.06 s = 26.4 tok/s", m.State, m.DecodeTPS)
+	}
 }
 
 func TestLaunch(t *testing.T) {

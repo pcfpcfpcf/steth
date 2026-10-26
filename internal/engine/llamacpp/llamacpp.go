@@ -8,8 +8,10 @@ package llamacpp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/fetch"
 	"github.com/pcfpcfpcf/steth/internal/engine/local"
@@ -34,12 +36,24 @@ type Source struct {
 	// Each model's counters as of the last read, and as of this one; keyed
 	// by the name a router knows it by, "" for a server of one model.
 	last, next map[string]counters
+	// Each busy slot's decoding as of the last read, and as of this one;
+	// keyed by model and slot.
+	slotsLast, slotsNext map[string]decoding
+	now                  func() time.Time
 	// The local server processes, by the port each listens on.
 	local *local.Finder
 }
 
+// decoding is how far one slot's request had decoded, and when.
+type decoding struct {
+	at      time.Time
+	task    int64
+	decoded int64
+}
+
 func New(endpoint string, client *http.Client) *Source {
-	return &Source{endpoint: endpoint, client: client, last: map[string]counters{}, local: local.NewFinder(Runs)}
+	return &Source{endpoint: endpoint, client: client, last: map[string]counters{},
+		slotsLast: map[string]decoding{}, now: time.Now, local: local.NewFinder(Runs)}
 }
 
 func (s *Source) Engine() string   { return Engine }
@@ -61,8 +75,13 @@ type wireProps struct {
 }
 
 type wireSlot struct {
+	ID            int64 `json:"id"`
+	IDTask        int64 `json:"id_task"`
 	IsProcessing  bool  `json:"is_processing"`
 	NPromptTokens int64 `json:"n_prompt_tokens"`
+	NextToken     []struct {
+		NDecoded int64 `json:"n_decoded"`
+	} `json:"next_token"`
 }
 
 type wireRouterModels struct {
@@ -78,10 +97,10 @@ type wireRouterModels struct {
 // Read reads the server; the counters of models it no longer has are
 // dropped with the read that misses them.
 func (s *Source) Read(ctx context.Context) (state.Reading, error) {
-	s.next = map[string]counters{}
+	s.next, s.slotsNext = map[string]counters{}, map[string]decoding{}
 	reading, err := s.read(ctx)
 	if err == nil {
-		s.last = s.next
+		s.last, s.slotsLast = s.next, s.slotsNext
 	}
 	return reading, err
 }
@@ -198,6 +217,10 @@ func (s *Source) readModel(ctx context.Context, props wireProps, model string, p
 	}
 	m.KVTokens = &held
 	m.Fidelity["kv_tokens"] = state.Measured
+	if decode := s.decodeRate(model, slots); decode != nil {
+		m.DecodeTPS = decode
+		m.Fidelity["decode_tps"] = state.Derived
+	}
 	if m.Running == nil {
 		m.Running = &busy
 		m.Fidelity["running"] = state.Measured
@@ -264,4 +287,33 @@ func (s *Source) readProcess(ctx context.Context, props wireProps, proc *local.S
 		m.Fidelity["context"] = state.Derived
 	}
 	return nil
+}
+
+// decodeRate is the tokens the busy slots decoded since the last read, per
+// second between the reads: live, where the server's counters move only when
+// a request ends. Nil when no slot was decoding the same request at both
+// reads.
+func (s *Source) decodeRate(model string, slots []wireSlot) *float64 {
+	now := s.now()
+	var tokens int64
+	var seconds float64
+	for _, slot := range slots {
+		if !slot.IsProcessing || len(slot.NextToken) == 0 {
+			continue
+		}
+		key := fmt.Sprintf("%s/%d", model, slot.ID)
+		decoded := slot.NextToken[0].NDecoded
+		s.slotsNext[key] = decoding{at: now, task: slot.IDTask, decoded: decoded}
+		before, ok := s.slotsLast[key]
+		if !ok || before.task != slot.IDTask || decoded < before.decoded {
+			continue
+		}
+		tokens += decoded - before.decoded
+		seconds = now.Sub(before.at).Seconds()
+	}
+	if seconds <= 0 {
+		return nil
+	}
+	r := float64(tokens) / seconds
+	return &r
 }
