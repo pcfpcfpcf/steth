@@ -67,6 +67,15 @@ type Model struct {
 	UnloadsAt  *time.Time         `json:"unloads_at"`
 	Config     map[string]Setting `json:"config"`
 	Fidelity   map[string]string  `json:"fidelity"`
+	// SpeedHistory is filled by the collector, not by an adapter.
+	SpeedHistory []Sample `json:"speed_history"`
+}
+
+// Sample is a model's speeds at one poll.
+type Sample struct {
+	Time       time.Time `json:"time"`
+	DecodeTPS  *float64  `json:"decode_tps"`
+	PrefillTPS *float64  `json:"prefill_tps"`
 }
 
 // Setting is one launch or load setting as the engine reports it, and

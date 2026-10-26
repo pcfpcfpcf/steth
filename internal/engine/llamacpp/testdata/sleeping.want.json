@@ -47,7 +47,8 @@
       },
       "fidelity": {
         "context": "measured"
-      }
+      },
+      "speed_history": null
     }
   ]
 }

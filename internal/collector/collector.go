@@ -22,15 +22,25 @@ type Source interface {
 
 var errNotRead = errors.New("not read yet")
 
+// How much speed history each model keeps, by age and by count.
+const (
+	historyWindow  = 2 * time.Minute
+	historySamples = 240
+)
+
 type Collector struct {
 	sources []Source
 	timeout time.Duration
+	now     func() time.Time
 	current atomic.Pointer[state.State]
+	// Each model's recent speeds, by modelKey; touched only by Poll, which
+	// runs one at a time.
+	history map[string][]state.Sample
 }
 
 // New makes a collector that gives each source `timeout` to answer a poll.
 func New(sources []Source, timeout time.Duration) *Collector {
-	c := &Collector{sources: sources, timeout: timeout}
+	c := &Collector{sources: sources, timeout: timeout, now: time.Now, history: map[string][]state.Sample{}}
 	unread := make([]result, len(sources))
 	for i := range unread {
 		unread[i].err = errNotRead
@@ -82,7 +92,41 @@ func (c *Collector) Poll(parent context.Context) {
 	if parent.Err() != nil {
 		return
 	}
-	c.current.Store(merge(c.sources, results))
+	s := merge(c.sources, results)
+	c.record(s.Models)
+	c.current.Store(s)
+}
+
+func modelKey(m state.Model) string { return m.Endpoint + " " + m.ID }
+
+// record adds each model's speeds to its history, drops samples older than
+// the window and the histories of models gone, and hands each model a copy
+// of its own.
+func (c *Collector) record(models []state.Model) {
+	now := c.now()
+	seen := map[string]bool{}
+	for i := range models {
+		m := &models[i]
+		key := modelKey(*m)
+		seen[key] = true
+		samples := c.history[key]
+		if m.DecodeTPS != nil || m.PrefillTPS != nil {
+			samples = append(samples, state.Sample{Time: now, DecodeTPS: m.DecodeTPS, PrefillTPS: m.PrefillTPS})
+		}
+		for len(samples) > 0 && (now.Sub(samples[0].Time) >= historyWindow || len(samples) > historySamples) {
+			samples = samples[1:]
+		}
+		c.history[key] = samples
+		m.SpeedHistory = slices.Clone(samples)
+		if m.SpeedHistory == nil {
+			m.SpeedHistory = []state.Sample{}
+		}
+	}
+	for key := range c.history {
+		if !seen[key] {
+			delete(c.history, key)
+		}
+	}
 }
 
 // merge joins the sources' readings: pools by name, the first source to

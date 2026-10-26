@@ -48,7 +48,8 @@
         "max_context": "measured",
         "pools": "measured",
         "queued": "measured"
-      }
+      },
+      "speed_history": null
     },
     {
       "id": "Qwen3 8B Instruct",
@@ -84,7 +85,8 @@
         "max_context": "measured",
         "pools": "measured",
         "queued": "measured"
-      }
+      },
+      "speed_history": null
     }
   ]
 }

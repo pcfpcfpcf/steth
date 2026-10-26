@@ -99,3 +99,30 @@ func TestRunPollsUntilCancelled(t *testing.T) {
 		t.Error("Run never polled")
 	}
 }
+
+func speed(v float64) *float64 { return &v }
+
+func TestHistoryKeepsTheWindowAndForgetsModelsGone(t *testing.T) {
+	fast := state.Model{ID: "fast", DecodeTPS: speed(30)}
+	quiet := state.Model{ID: "quiet"}
+	a := &fake{engine: "a", reading: state.Reading{Models: []state.Model{fast, quiet}}}
+	c := New([]Source{a}, time.Second)
+	clock := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	c.now = func() time.Time { return clock }
+	for i := 0; i < 3; i++ {
+		c.Poll(context.Background())
+		clock = clock.Add(time.Minute)
+	}
+	s := c.State()
+	if n := len(s.Models[0].SpeedHistory); n != 2 {
+		t.Errorf("fast keeps %d samples after 3 polls a minute apart; expected the 2 within %v", n, historyWindow)
+	}
+	if s.Models[1].SpeedHistory == nil || len(s.Models[1].SpeedHistory) != 0 {
+		t.Errorf("quiet, with no speed, has history %v; expected an empty list", s.Models[1].SpeedHistory)
+	}
+	a.reading.Models = []state.Model{quiet}
+	c.Poll(context.Background())
+	if _, kept := c.history[modelKey(state.Model{ID: "fast", Endpoint: "http://a"})]; kept {
+		t.Error("history of a model gone is kept")
+	}
+}

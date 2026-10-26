@@ -77,6 +77,7 @@ known (`id`, `engine`, `endpoint`, `state`).
 | `unloads_at` | string or null | RFC 3339 time its engine will unload it if no request comes first |
 | `config` | object or null | setting name → `{"value", "source"}`: how the engine was launched or the model loaded, as the engine reports it (`source` names where: an endpoint, or `launch args`). Names are the engine's own, read-only |
 | `fidelity` | object | field name → `"measured"` or `"derived"` |
+| `speed_history` | array | the polls of the last two minutes that had a speed, oldest first: `{"time", "decode_tps", "prefill_tps"}`. Empty for an engine that reports no speed |
 
 ## sources[]
 

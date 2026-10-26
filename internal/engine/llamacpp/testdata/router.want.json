@@ -58,7 +58,8 @@
         "context": "measured",
         "kv_tokens": "measured",
         "running": "measured"
-      }
+      },
+      "speed_history": null
     },
     {
       "id": "gemma3-1b",
@@ -85,7 +86,8 @@
           "source": "/v1/models"
         }
       },
-      "fidelity": {}
+      "fidelity": {},
+      "speed_history": null
     },
     {
       "id": "qwen3-8b",
@@ -112,7 +114,8 @@
           "source": "/v1/models"
         }
       },
-      "fidelity": {}
+      "fidelity": {},
+      "speed_history": null
     }
   ]
 }

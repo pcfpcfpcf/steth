@@ -52,7 +52,8 @@
         "prefill_tps": "derived",
         "queued": "measured",
         "running": "measured"
-      }
+      },
+      "speed_history": null
     }
   ]
 }

@@ -55,7 +55,8 @@
         "context": "measured",
         "pools": "measured",
         "unloads_at": "measured"
-      }
+      },
+      "speed_history": null
     },
     {
       "id": "qwen2.5:1.5b",
@@ -102,7 +103,8 @@
         "context": "measured",
         "pools": "measured",
         "unloads_at": "measured"
-      }
+      },
+      "speed_history": null
     }
   ]
 }
