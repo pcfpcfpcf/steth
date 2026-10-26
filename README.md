@@ -13,7 +13,7 @@ never loads, unloads or configures a model.
 | engine | reads | status |
 |---|---|---|
 | geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue |
-| Ollama | | planned |
+| Ollama | `GET /api/ps` | per-model GPU and host memory, context length; no pool sizes, KV split or busy state |
 | llama.cpp | | planned |
 | vLLM | | planned |
 
@@ -22,7 +22,7 @@ never loads, unloads or configures a model.
 Needs Go 1.24 or later.
 
     go build ./cmd/steth
-    ./steth --target geode=http://127.0.0.1:8080
+    ./steth --target ollama=http://127.0.0.1:11434 --target geode=http://127.0.0.1:8080
     go test ./...
 
 Then open http://127.0.0.1:7474. `--target ENGINE=URL` repeats for more
