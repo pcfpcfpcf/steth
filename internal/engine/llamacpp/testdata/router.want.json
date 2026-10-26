@@ -11,14 +11,15 @@
       "context": 4096,
       "max_context": null,
       "pools": null,
-      "running": null,
+      "running": 0,
       "decode_tps": null,
       "prefill_tps": null,
       "unloads_at": null,
       "config": null,
       "fidelity": {
         "context": "measured",
-        "kv_tokens": "measured"
+        "kv_tokens": "measured",
+        "running": "measured"
       }
     },
     {

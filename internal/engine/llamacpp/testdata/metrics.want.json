@@ -1,0 +1,29 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "Qwen3.5-0.8B-Q8_0",
+      "engine": "",
+      "endpoint": "",
+      "state": "serving",
+      "queued": 2,
+      "kv_tokens": 1836,
+      "context": 8192,
+      "max_context": null,
+      "pools": null,
+      "running": 1,
+      "decode_tps": 32,
+      "prefill_tps": 2000,
+      "unloads_at": null,
+      "config": null,
+      "fidelity": {
+        "context": "measured",
+        "decode_tps": "derived",
+        "kv_tokens": "measured",
+        "prefill_tps": "derived",
+        "queued": "measured",
+        "running": "measured"
+      }
+    }
+  ]
+}

@@ -25,13 +25,18 @@ const (
 	routerSleeping = "sleeping"
 )
 
+// Source reads one server. The collector reads a source from one poll at a
+// time, so `last` and `next` need no lock.
 type Source struct {
 	endpoint string
 	client   *http.Client
+	// Each model's counters as of the last read, and as of this one; keyed
+	// by the name a router knows it by, "" for a server of one model.
+	last, next map[string]counters
 }
 
 func New(endpoint string, client *http.Client) *Source {
-	return &Source{endpoint: endpoint, client: client}
+	return &Source{endpoint: endpoint, client: client, last: map[string]counters{}}
 }
 
 func (s *Source) Engine() string   { return Engine }
@@ -41,6 +46,7 @@ type wireProps struct {
 	Role                      string `json:"role"`
 	ModelAlias                string `json:"model_alias"`
 	EndpointSlots             bool   `json:"endpoint_slots"`
+	EndpointMetrics           bool   `json:"endpoint_metrics"`
 	IsSleeping                bool   `json:"is_sleeping"`
 	DefaultGenerationSettings struct {
 		NCtx int64 `json:"n_ctx"`
@@ -61,7 +67,18 @@ type wireRouterModels struct {
 	} `json:"data"`
 }
 
+// Read reads the server; the counters of models it no longer has are
+// dropped with the read that misses them.
 func (s *Source) Read(ctx context.Context) (state.Reading, error) {
+	s.next = map[string]counters{}
+	reading, err := s.read(ctx)
+	if err == nil {
+		s.last = s.next
+	}
+	return reading, err
+}
+
+func (s *Source) read(ctx context.Context) (state.Reading, error) {
 	var props wireProps
 	if err := s.get(ctx, "/props", "", &props); err != nil {
 		return state.Reading{}, err
@@ -116,11 +133,16 @@ func (s *Source) readModel(ctx context.Context, props wireProps, model string) (
 		Context:  &nCtx,
 		Fidelity: map[string]string{"context": state.Measured},
 	}
-	// Reading /slots wakes a sleeping server; a server without it does not
-	// say what its slots hold.
+	// Reading /slots wakes a sleeping server; /metrics does not, but a
+	// sleeping server has nothing running.
 	if props.IsSleeping {
 		m.State = state.Sleeping
 		return m, nil
+	}
+	if props.EndpointMetrics {
+		if err := s.readMetrics(ctx, model, &m); err != nil {
+			return state.Model{}, err
+		}
 	}
 	if !props.EndpointSlots {
 		return m, nil
@@ -130,25 +152,37 @@ func (s *Source) readModel(ctx context.Context, props wireProps, model string) (
 		return state.Model{}, err
 	}
 	// Each slot keeps its last conversation in the cache after it ends.
-	var held int64
-	m.State = state.Idle
+	var held, busy int64
 	for _, slot := range slots {
 		held += slot.NPromptTokens
 		if slot.IsProcessing {
-			m.State = state.Serving
+			busy++
 		}
+	}
+	m.State = state.Idle
+	if busy > 0 {
+		m.State = state.Serving
 	}
 	m.KVTokens = &held
 	m.Fidelity["kv_tokens"] = state.Measured
+	if m.Running == nil {
+		m.Running = &busy
+		m.Fidelity["running"] = state.Measured
+	}
 	return m, nil
 }
 
-// get reads `path`, through the router's child for `model` when it is set.
-// autoload=false keeps the router from loading a model to answer.
+// get decodes the JSON at `path` into `into`.
 func (s *Source) get(ctx context.Context, path, model string, into any) error {
-	address := s.endpoint + path
-	if model != "" {
-		address += "?" + url.Values{"model": {model}, "autoload": {"false"}}.Encode()
+	return fetch.JSON(ctx, s.client, s.address(path, model), into)
+}
+
+// address is `path` on the server, through the router's child for `model`
+// when it is set. autoload=false keeps the router from loading a model to
+// answer.
+func (s *Source) address(path, model string) string {
+	if model == "" {
+		return s.endpoint + path
 	}
-	return fetch.JSON(ctx, s.client, address, into)
+	return s.endpoint + path + "?" + url.Values{"model": {model}, "autoload": {"false"}}.Encode()
 }

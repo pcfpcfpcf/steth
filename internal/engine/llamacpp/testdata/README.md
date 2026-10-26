@@ -9,3 +9,6 @@ responses once a server can be run here.
 - `sleeping.props.json`: the same server asleep after `--sleep-idle-seconds`.
 - `router.*`: `llama serve` started without a model, managing several: one
   loaded, one sleeping, one loading, one unloaded.
+- `metrics.*`: the single server started with `--metrics`; two scrapes a
+  second apart: 512 prompt tokens in 0.256 s, 24 generated in 0.75 s, two
+  requests deferred.
