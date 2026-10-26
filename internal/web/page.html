@@ -110,6 +110,9 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .label b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .label span { font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; }
 .free .label { top: auto; bottom: 10px; }
+.free.other { background: repeating-linear-gradient(135deg, var(--track) 0 6px, color-mix(in srgb, var(--muted) 16%, var(--track)) 6px 12px); border-color: var(--surface); }
+.free.other::after { content: none; }
+.free.other .label { top: 8px; bottom: auto; }
 .kv {
   position: absolute; right: 0; bottom: 0; border-radius: 6px 0 0 0;
   background: color-mix(in srgb, var(--surface) 72%, var(--c));
@@ -133,6 +136,7 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .hint span { display: inline-flex; align-items: center; gap: 8px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--c); flex-shrink: 0; }
 .swatch.kv-key { background: color-mix(in srgb, var(--surface) 72%, var(--muted)); box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--surface) 30%, var(--muted)); }
+.swatch.other-key { background: repeating-linear-gradient(135deg, var(--track) 0 3px, color-mix(in srgb, var(--muted) 30%, var(--track)) 3px 6px); }
 .swatch.free-key { background: none; border: 1px dashed var(--muted); }
 
 /* ---- the models, one row each ---- */
@@ -241,6 +245,7 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
     <p class="nothing" id="no-pools" hidden>No engine has said what memory this box has yet.</p>
     <div class="hint">
       <span><i class="swatch kv-key"></i>KV cache: its box is what is reserved, the darker part what is in use</span>
+      <span><i class="swatch other-key"></i>Other: in use, but not by a model steth reads</span>
       <span><i class="swatch free-key"></i>Free</span>
       <span>Click a model or a pool for details</span>
     </div>
@@ -277,6 +282,9 @@ const $ = (id) => document.getElementById(id);
 const series = (i) => `var(--s${(i % 8) + 1})`;
 /* The treemap's key for a pool's free space; a model's key is never it. */
 const FREE = "";
+/* The key for what is in use outside every model steth reads. */
+const OTHER = " other";
+const SPACES = { [FREE]: { name: "free", label: "Free" }, [OTHER]: { name: "other", label: "Other" } };
 const gb = (bytes) => {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(bytes >= 1e11 ? 0 : 1)} GB`;
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
@@ -363,9 +371,13 @@ const size = (bytes) => (bytes == null ? "–" : gb(bytes));
 const usedText = (pool, bytes) => pool.name === "nvme"
   ? (bytes > 0 ? `${gb(bytes)} streamed` : "nothing streamed")
   : `${gb(bytes)} used`;
+/* `used` is what the models hold; `other` what the box says is in use
+   besides; `free` the rest, null where the size is not known. */
 function poolTotals(status, pool) {
   const used = sum(status.models, (m) => whole(holding(m, pool.name)));
-  return { used, scale: Math.max(pool.capacity_bytes ?? used, used) };
+  const other = pool.used_bytes == null ? 0 : Math.max(0, pool.used_bytes - used);
+  const free = pool.capacity_bytes == null ? null : Math.max(0, pool.capacity_bytes - used - other);
+  return { used, other, free };
 }
 
 /* An ordered treemap: the items keep their order, so a model keeps its
@@ -416,7 +428,7 @@ function square(pool) {
   $("pools").appendChild(wrap);
   const view = {
     wrap, el: wrap.querySelector(".square"), figure: wrap.querySelector(".pool-figure"),
-    empty: wrap.querySelector(".empty"), blocks: new Map(), free: null,
+    empty: wrap.querySelector(".empty"), blocks: new Map(), spaces: new Map(),
   };
   wrap.querySelector(".pool-head").addEventListener("click", () => select({ pool }));
   squares[pool] = view;
@@ -439,16 +451,17 @@ function blockFor(view, pool, m) {
   return el;
 }
 
-function freeFor(view, pool) {
-  if (view.free) return view.free;
+/* The block for a pool's free space or its other use. */
+function spaceFor(view, pool, key) {
+  if (view.spaces.has(key)) return view.spaces.get(key);
   const el = document.createElement("button");
-  el.className = "free";
-  el.innerHTML = `<div class="label"><b>Free</b><span></span></div>`;
-  el.addEventListener("mousemove", (e) => showTip(e, pool, FREE));
+  el.className = `free ${SPACES[key].name}`;
+  el.innerHTML = `<div class="label"><b>${SPACES[key].label}</b><span></span></div>`;
+  el.addEventListener("mousemove", (e) => showTip(e, pool, key));
   el.addEventListener("mouseleave", hideTip);
   el.addEventListener("click", () => select({ pool }));
   view.el.appendChild(el);
-  view.free = el;
+  view.spaces.set(key, el);
   return el;
 }
 
@@ -468,13 +481,14 @@ function drawPools(status) {
   $("no-pools").hidden = status.pools.length > 0;
   for (const pool of status.pools) {
     const view = square(pool.name);
-    const { used, scale } = poolTotals(status, pool);
+    const { used, other, free } = poolTotals(status, pool);
     const unsized = pool.capacity_bytes == null, absent = pool.capacity_bytes === 0;
-    tween(view.figure, used, (bytes) => unsized ? usedText(pool, bytes)
+    tween(view.figure, used + other, (bytes) => unsized ? usedText(pool, bytes)
       : absent ? "none" : `${gb(bytes)} of ${gb(pool.capacity_bytes)}`);
 
     const items = status.models.map((m) => ({ key: keyOf(m), area: whole(holding(m, pool.name)) }));
-    if (!unsized) items.push({ key: FREE, area: pool.capacity_bytes - used });
+    items.push({ key: OTHER, area: other });
+    if (!unsized) items.push({ key: FREE, area: free });
     const placed = treemap(items, 0, 0, 1, 1, []);
     const side = view.el.clientWidth;
 
@@ -506,17 +520,18 @@ function drawPools(status) {
       kv.lastElementChild.textContent = fits ? `KV ${tokens(m, short, "/")}` : "";
     }
 
-    const free = placed.find((p) => p.key === FREE);
-    if (!unsized && !absent) {
-      const el = freeFor(view, pool.name);
-      el.classList.toggle("gone", !free);
-      if (free) place(el, free); else el.style.width = el.style.height = "0";
-      el.querySelector("span").textContent = gb(pool.capacity_bytes - used);
+    for (const [key, bytes] of [[OTHER, other], [FREE, free]]) {
+      if (absent || bytes == null) continue;
+      const el = spaceFor(view, pool.name, key);
+      const r = placed.find((p) => p.key === key);
+      el.classList.toggle("gone", !r);
+      if (r) place(el, r); else el.style.width = el.style.height = "0";
+      el.querySelector("span").textContent = gb(bytes);
       el.querySelector(".label").style.opacity =
-        free && free.w * side >= LABEL_MIN_PX.width && free.h * side >= LABEL_MIN_PX.height ? 1 : 0;
+        r && r.w * side >= LABEL_MIN_PX.width && r.h * side >= LABEL_MIN_PX.height ? 1 : 0;
     }
     view.el.classList.toggle("focused", selected.model != null);
-    view.empty.textContent = used > 0 ? "" : pool.name === "nvme" ? "Nothing streams: every model is held in memory"
+    view.empty.textContent = used + other > 0 ? "" : pool.name === "nvme" ? "Nothing streams: every model is held in memory"
       : absent ? `No ${poolInfo(pool.name).label.toLowerCase()} on this box` : "Empty";
   }
 }
@@ -716,17 +731,21 @@ function poolDetails(status, name) {
   if (pool.capacity_bytes === 0)
     return `<div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
       <div class="note">No ${poolInfo(name).label.toLowerCase()} on this box: every model is held elsewhere.</div>`;
-  const { used } = poolTotals(status, pool);
+  const { used, other, free } = poolTotals(status, pool);
   const unsized = pool.capacity_bytes == null;
-  const of = unsized ? used : pool.capacity_bytes;
+  const of = unsized ? used + other : pool.capacity_bytes;
   const share = (bytes) => (of > 0 ? bytes / of : 0);
   return `
     <div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
     <div class="note">${poolInfo(name).detail}</div>
-    <div class="big"><b>${gb(used)}</b><span>${unsized ? (pool.name === "nvme" ? "streamed from the drive" : "in use; no engine says its size")
+    <div class="big"><b>${gb(used + other)}</b><span>${unsized ? (pool.name === "nvme" ? "streamed from the drive" : "in use; no engine says its size")
       : `of ${gb(pool.capacity_bytes)} in use`}</span></div>
-    ${unsized ? "" : `<div class="facts"><div><small>Free</small><span>${gb(pool.capacity_bytes - used)}</span></div>
-      <div><small>In use</small><span>${Math.round(share(used) * 100)}%</span></div></div>`}
+    <div class="facts">
+      <div><small>Models</small><span>${gb(used)}</span></div>
+      <div><small>Other</small><span>${pool.used_bytes == null ? "–" : gb(other)}</span></div>
+      ${unsized ? "" : `<div><small>Free</small><span>${gb(free)}</span></div>
+      <div><small>In use</small><span>${Math.round(share(used + other) * 100)}%</span></div>`}
+    </div>
     <h4>Held by</h4>
     <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
     ${status.models.map((m) => {
@@ -752,10 +771,14 @@ function showTip(event, pool, key) {
   const tip = $("tip");
   const m = findModel(current, key);
   if (!m) {
-    const p = current.pools.find((x) => x.name === pool);
-    tip.innerHTML = `<b>${poolInfo(pool).label}, free</b>
-      <div class="row"><span>Free</span><span>${gb(p.capacity_bytes - poolTotals(current, p).used)}</span></div>
-      <div class="more">Click for the whole pool</div>`;
+    const p = current.pools.find((x) => x.name === pool), totals = poolTotals(current, p);
+    tip.innerHTML = key === OTHER
+      ? `<b>${poolInfo(pool).label}, other</b>
+        <div class="row"><span>In use</span><span>${gb(totals.other)}</span></div>
+        <div class="more">By the system, other programs, or an engine steth does not read</div>`
+      : `<b>${poolInfo(pool).label}, free</b>
+        <div class="row"><span>Free</span><span>${gb(totals.free)}</span></div>
+        <div class="more">Click for the whole pool</div>`;
   } else {
     const h = holding(m, pool);
     tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
