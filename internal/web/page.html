@@ -573,9 +573,12 @@ const rateText = (r, none) => (r == null ? none : `${r.toFixed(1)} tok/s`);
 function drawSummary(status) {
   const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
   const moving = status.models.filter((m) => m.state === "moving").length;
-  const queued = sum(status.models, (m) => m.queued);
+  const queued = sum(status.models, (m) => m.queued ?? 0);
   const parts = [`${status.models.length} model${status.models.length === 1 ? "" : "s"} on this box`];
-  parts.push(serving.length ? `serving ${serving.join(" and ")}` : "nothing being served");
+  /* "Nothing" only when every engine says what each model is doing. */
+  const unknown = status.models.some((m) => !(m.state in STATES) || m.state === "loaded");
+  if (serving.length) parts.push(`serving ${serving.join(" and ")}`);
+  else if (status.models.length && !unknown) parts.push("nothing being served");
   if (queued) parts.push(`${queued} request${queued === 1 ? "" : "s"} waiting`);
   if (moving) parts.push(`${moving} moving`);
   $("summary").textContent = parts.join(" · ");
