@@ -26,9 +26,12 @@ jobs:
       - run: go vet ./...
       # A failing test's lines become annotations, which anyone can read
       # without the log.
+      # Actions runs bash with -e and pipefail; the tests' status alone decides.
       - run: |
-          go test -race ./... 2>&1 | tee test.log
-          status=${PIPESTATUS[0]}
+          set +e +o pipefail
+          go test -race ./... > test.log 2>&1
+          status=$?
+          cat test.log
           grep -E -- '--- FAIL|_test\.go:[0-9]+|panic:' test.log | head -30 | sed 's/^/::error::/'
           exit $status
 
