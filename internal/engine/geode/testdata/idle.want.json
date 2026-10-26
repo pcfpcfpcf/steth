@@ -1,0 +1,80 @@
+{
+  "pools": [
+    {
+      "name": "vram",
+      "capacity_bytes": 4026516480
+    },
+    {
+      "name": "dram",
+      "capacity_bytes": 26798312652
+    },
+    {
+      "name": "nvme",
+      "capacity_bytes": null
+    }
+  ],
+  "models": [
+    {
+      "id": "Qwen3.5-0.8B",
+      "engine": "",
+      "endpoint": "",
+      "state": "idle",
+      "queued": 0,
+      "kv_tokens": 0,
+      "context": 4096,
+      "max_context": 262144,
+      "pools": {
+        "dram": {
+          "weight_bytes": 1091255552,
+          "kv_bytes_per_token": 6528
+        },
+        "nvme": {
+          "weight_bytes": 0,
+          "kv_bytes_per_token": 0
+        },
+        "vram": {
+          "weight_bytes": 0,
+          "kv_bytes_per_token": 0
+        }
+      },
+      "fidelity": {
+        "context": "measured",
+        "kv_tokens": "measured",
+        "max_context": "measured",
+        "pools": "measured",
+        "queued": "measured"
+      }
+    },
+    {
+      "id": "Qwen3 8B Instruct",
+      "engine": "",
+      "endpoint": "",
+      "state": "idle",
+      "queued": 0,
+      "kv_tokens": 0,
+      "context": 4096,
+      "max_context": 40960,
+      "pools": {
+        "dram": {
+          "weight_bytes": 4763994112,
+          "kv_bytes_per_token": 73984
+        },
+        "nvme": {
+          "weight_bytes": 0,
+          "kv_bytes_per_token": 0
+        },
+        "vram": {
+          "weight_bytes": 3969452032,
+          "kv_bytes_per_token": 4352
+        }
+      },
+      "fidelity": {
+        "context": "measured",
+        "kv_tokens": "measured",
+        "max_context": "measured",
+        "pools": "measured",
+        "queued": "measured"
+      }
+    }
+  ]
+}

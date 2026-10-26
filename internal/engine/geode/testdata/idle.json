@@ -1,0 +1,65 @@
+{
+"object": "pool",
+"pools": [
+  {
+    "name": "vram",
+    "capacity_bytes": 4026516480
+  },
+  {
+    "name": "dram",
+    "capacity_bytes": 26798312652
+  },
+  {
+    "name": "nvme",
+    "capacity_bytes": null
+  }
+],
+"models": [
+  {
+    "id": "Qwen3.5-0.8B",
+    "state": "idle",
+    "queued": 0,
+    "demand": 1,
+    "cache_tokens": 0,
+    "context": 4096,
+    "most_context": 262144,
+    "pools": {
+      "vram": {
+        "bytes": 0,
+        "bytes_per_token": 0
+      },
+      "dram": {
+        "bytes": 1091255552,
+        "bytes_per_token": 6528
+      },
+      "nvme": {
+        "bytes": 0,
+        "bytes_per_token": 0
+      }
+    }
+  },
+  {
+    "id": "Qwen3 8B Instruct",
+    "state": "idle",
+    "queued": 0,
+    "demand": 1,
+    "cache_tokens": 0,
+    "context": 4096,
+    "most_context": 40960,
+    "pools": {
+      "vram": {
+        "bytes": 3969452032,
+        "bytes_per_token": 4352
+      },
+      "dram": {
+        "bytes": 4763994112,
+        "bytes_per_token": 73984
+      },
+      "nvme": {
+        "bytes": 0,
+        "bytes_per_token": 0
+      }
+    }
+  }
+]
+}
