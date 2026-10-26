@@ -22,14 +22,25 @@ never loads, unloads or configures a model.
 Needs Go 1.24 or later.
 
     go build ./cmd/steth
-    ./steth --target ollama=http://127.0.0.1:11434 --target geode=http://127.0.0.1:8080
+    ./steth
     go test ./...
 
-Then open http://127.0.0.1:7474. Click a model for its speeds over the
+Then open http://127.0.0.1:7474.
+
+steth finds the engines on its machine by itself: every listening socket
+whose process runs an engine (`ollama serve`, `llama serve`, `geode serve`),
+asked as that engine to confirm, and, where the process is another user's,
+such as a system service, the engines' default ports. It looks again every
+10 seconds. `--target ENGINE=URL` adds one it cannot find, such as an engine
+on another machine; repeat it for more. `-discover=false` reads only those.
+`--listen ADDR` moves the page.
+
+On Linux steth also reads the machine itself: each pool's size and how much
+of it is in use, from `/proc/meminfo` and `nvidia-smi`. Other systems are not
+read yet. Click a model for its speeds over the
 last two minutes, its requests, and its settings as the engine reports them;
 a dash is something its engine does not say, and `derived` marks a number
-steth computed from what it does say. `--target ENGINE=URL` repeats for more
-engines; `--listen ADDR` moves the page.
+steth computed from what it does say.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
