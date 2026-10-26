@@ -32,11 +32,29 @@
       "running": null,
       "decode_tps": null,
       "prefill_tps": null,
-      "unloads_at": null,
-      "config": null,
+      "unloads_at": "2026-10-26T17:10:50.374019822+01:00",
+      "config": {
+        "family": {
+          "value": "llama",
+          "source": "/api/ps"
+        },
+        "format": {
+          "value": "gguf",
+          "source": "/api/ps"
+        },
+        "parameter_size": {
+          "value": "1.2B",
+          "source": "/api/ps"
+        },
+        "quantization_level": {
+          "value": "Q8_0",
+          "source": "/api/ps"
+        }
+      },
       "fidelity": {
         "context": "measured",
-        "pools": "measured"
+        "pools": "measured",
+        "unloads_at": "measured"
       }
     },
     {
@@ -61,11 +79,29 @@
       "running": null,
       "decode_tps": null,
       "prefill_tps": null,
-      "unloads_at": null,
-      "config": null,
+      "unloads_at": "2026-10-26T17:10:41.764446272+01:00",
+      "config": {
+        "family": {
+          "value": "qwen2",
+          "source": "/api/ps"
+        },
+        "format": {
+          "value": "gguf",
+          "source": "/api/ps"
+        },
+        "parameter_size": {
+          "value": "1.5B",
+          "source": "/api/ps"
+        },
+        "quantization_level": {
+          "value": "Q4_K_M",
+          "source": "/api/ps"
+        }
+      },
       "fidelity": {
         "context": "measured",
-        "pools": "measured"
+        "pools": "measured",
+        "unloads_at": "measured"
       }
     }
   ]
