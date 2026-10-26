@@ -74,6 +74,7 @@ h1 { margin: 6px 0 0; font-size: clamp(24px, 3.4vw, 34px); font-weight: 600; let
 .live i, .state i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .live.on i { background: var(--good); animation: breathe 2.4s ease-in-out infinite; }
 .live.off i { background: var(--critical); }
+.live.partial i { background: var(--warning); }
 @keyframes breathe { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--good) 18%, transparent); } }
 .theme { display: flex; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--ring); }
 .theme button { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
@@ -655,6 +656,15 @@ function showTip(event, pool, key) {
 }
 function hideTip() { $("tip").classList.remove("shown"); }
 
+function drawSources(sources) {
+  const failed = sources.filter((s) => !s.ok);
+  const detail = failed.map((s) => `${s.engine} at ${s.endpoint}: ${s.error}`).join("\n");
+  if (failed.length === 0) setLive("on", "live");
+  else if (failed.length === sources.length)
+    setLive("off", sources.length === 1 ? `${sources[0].engine} is not answering` : "no engine is answering", detail);
+  else setLive("partial", `${failed.length} of ${sources.length} engines not answering`, detail);
+}
+
 /* ---- the poll ---- */
 let current = null;
 
@@ -678,9 +688,11 @@ function draw(status, now) {
   drawPanel(status);
 }
 
-function setLive(on, text) {
-  $("live").className = `live ${on ? "on" : "off"}`;
+/* `level` is "on", "partial" or "off"; `detail` says what failed. */
+function setLive(level, text, detail = "") {
+  $("live").className = `live ${level}`;
   $("live").lastElementChild.textContent = text;
+  $("live").title = detail;
 }
 
 async function poll() {
@@ -691,9 +703,9 @@ async function poll() {
     current = await response.json();
     track(current, forget);
     draw(current, performance.now());
-    setLive(true, "live");
+    drawSources(current.sources);
   } catch (e) {
-    setLive(false, "steth is not answering");
+    setLive("off", "steth is not answering", String(e));
   }
   setTimeout(poll, Math.max(0, next - performance.now()));
 }
