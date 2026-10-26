@@ -1,8 +1,1 @@
-[
-  {
-    "id": 0, "n_ctx": 4096, "speculative": false, "is_processing": false,
-    "id_task": 3, "n_prompt_tokens": 800, "n_prompt_tokens_processed": 800, "n_prompt_tokens_cache": 0,
-    "params": {"n_predict": -1, "temperature": 0.8},
-    "next_token": [{"has_next_token": false, "has_new_line": false, "n_remain": -1, "n_decoded": 200}]
-  }
-]
+[{"id":0,"n_ctx":4096,"speculative":false,"is_processing":false},{"id":1,"n_ctx":4096,"speculative":false,"is_processing":false},{"id":2,"n_ctx":4096,"speculative":false,"is_processing":false},{"id":3,"n_ctx":4096,"speculative":false,"is_processing":false}]

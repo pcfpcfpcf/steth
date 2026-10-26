@@ -11,7 +11,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/engine/local"
 )
 
-const child = "?autoload=false&model=qwen3.5-0.8b"
+const child = "?autoload=false&model=Qwen3.5-0.8B-Q8_0"
 
 // newSource reads `url` with `procs` as the machine's processes; nil is a
 // machine where none can be seen.
@@ -33,10 +33,16 @@ func TestReadMatchesSchema(t *testing.T) {
 			"/props": "testdata/sleeping.props.json",
 		},
 		"router": {
-			"/props":         "testdata/router.props.json",
-			"/v1/models":     "testdata/router.models.json",
-			"/props" + child: "testdata/router.child.props.json",
-			"/slots" + child: "testdata/router.child.slots.json",
+			"/props":           "testdata/router.props.json",
+			"/v1/models":       "testdata/router.models.json",
+			"/props" + child:   "testdata/router.child.props.json",
+			"/slots" + child:   "testdata/router.child.slots.json",
+			"/metrics" + child: "testdata/router.child.metrics.txt",
+		},
+		// Models a router is putting to sleep or loading are listed, not read.
+		"router-states": {
+			"/props":     "testdata/router.props.json",
+			"/v1/models": "testdata/router.states.models.json",
 		},
 	}
 	for name, fixtures := range cases {

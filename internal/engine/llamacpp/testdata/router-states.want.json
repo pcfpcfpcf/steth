@@ -1,0 +1,61 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "gemma3-1b",
+      "engine": "",
+      "endpoint": "",
+      "state": "sleeping",
+      "queued": null,
+      "kv_tokens": null,
+      "context": null,
+      "max_context": null,
+      "pools": null,
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": {
+        "args": {
+          "value": [
+            "llama",
+            "serve",
+            "--port",
+            "41002"
+          ],
+          "source": "/v1/models"
+        }
+      },
+      "fidelity": {},
+      "speed_history": null
+    },
+    {
+      "id": "qwen3-8b",
+      "engine": "",
+      "endpoint": "",
+      "state": "moving",
+      "queued": null,
+      "kv_tokens": null,
+      "context": null,
+      "max_context": null,
+      "pools": null,
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": {
+        "args": {
+          "value": [
+            "llama",
+            "serve",
+            "--port",
+            "41003"
+          ],
+          "source": "/v1/models"
+        }
+      },
+      "fidelity": {},
+      "speed_history": null
+    }
+  ]
+}

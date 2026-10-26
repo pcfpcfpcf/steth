@@ -2,12 +2,12 @@
   "pools": null,
   "models": [
     {
-      "id": "qwen3.5-0.8b",
+      "id": "Qwen3.5-0.8B-Q8_0",
       "engine": "",
       "endpoint": "",
       "state": "idle",
-      "queued": null,
-      "kv_tokens": 800,
+      "queued": 0,
+      "kv_tokens": 0,
       "context": 4096,
       "max_context": null,
       "pools": null,
@@ -18,19 +18,30 @@
       "config": {
         "args": {
           "value": [
-            "llama",
+            "/home/esc/.local/bin/llama",
             "serve",
+            "--host",
+            "127.0.0.1",
+            "--metrics",
             "--port",
-            "41001"
+            "46617",
+            "--alias",
+            "Qwen3.5-0.8B-Q8_0",
+            "--ctx-size",
+            "4096",
+            "--model",
+            "/tmp/claude-1000/-home-esc-pcf-steth/e2d05a17-272e-404e-9611-3d7be9c4d8f4/scratchpad/models/Qwen3.5-0.8B-Q8_0.gguf",
+            "--n-gpu-layers",
+            "0"
           ],
           "source": "/v1/models"
         },
         "build_info": {
-          "value": "b0-a469940",
+          "value": "b10217-ddd4ec142",
           "source": "/props"
         },
         "endpoint_metrics": {
-          "value": false,
+          "value": true,
           "source": "/props"
         },
         "endpoint_slots": {
@@ -42,7 +53,7 @@
           "source": "/props"
         },
         "model_path": {
-          "value": "/models/Qwen3.5-0.8B-Q8_0.gguf",
+          "value": "/tmp/claude-1000/-home-esc-pcf-steth/e2d05a17-272e-404e-9611-3d7be9c4d8f4/scratchpad/models/Qwen3.5-0.8B-Q8_0.gguf",
           "source": "/props"
         },
         "n_ctx": {
@@ -50,71 +61,16 @@
           "source": "/props"
         },
         "total_slots": {
-          "value": 1,
+          "value": 4,
           "source": "/props"
         }
       },
       "fidelity": {
         "context": "measured",
         "kv_tokens": "measured",
+        "queued": "measured",
         "running": "measured"
       },
-      "speed_history": null
-    },
-    {
-      "id": "gemma3-1b",
-      "engine": "",
-      "endpoint": "",
-      "state": "sleeping",
-      "queued": null,
-      "kv_tokens": null,
-      "context": null,
-      "max_context": null,
-      "pools": null,
-      "running": null,
-      "decode_tps": null,
-      "prefill_tps": null,
-      "unloads_at": null,
-      "config": {
-        "args": {
-          "value": [
-            "llama",
-            "serve",
-            "--port",
-            "41002"
-          ],
-          "source": "/v1/models"
-        }
-      },
-      "fidelity": {},
-      "speed_history": null
-    },
-    {
-      "id": "qwen3-8b",
-      "engine": "",
-      "endpoint": "",
-      "state": "moving",
-      "queued": null,
-      "kv_tokens": null,
-      "context": null,
-      "max_context": null,
-      "pools": null,
-      "running": null,
-      "decode_tps": null,
-      "prefill_tps": null,
-      "unloads_at": null,
-      "config": {
-        "args": {
-          "value": [
-            "llama",
-            "serve",
-            "--port",
-            "41003"
-          ],
-          "source": "/v1/models"
-        }
-      },
-      "fidelity": {},
       "speed_history": null
     }
   ]

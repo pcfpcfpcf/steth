@@ -11,7 +11,10 @@ CPU-only with Qwen3.5-0.8B-Q8_0, two slots, an 8192-token cache and
   move only when a request ends.
 - `sleeping.props.json`: `live.props.json` with `is_sleeping` set.
 
-`router.*` are not recorded: they are written field for field from the
-server source at commit a469940 (`get_router_props`, `get_router_models`),
-for `llama serve` started without a model, managing several: one loaded,
-one sleeping, one loading, one unloaded.
+`router.*` are recorded from the same build started as a router
+(`--models-dir` with two models, `--no-models-autoload`, `--metrics`), with
+Qwen3.5-0.8B-Q8_0 loaded through it and the rest unloaded; the `child`
+files are that model read through `?model=` with `autoload=false`.
+`router.states.models.json` is not recorded: it is written from the server
+source at commit a469940 (`get_router_models`) for the states not seen
+here, a model sleeping and one loading.
