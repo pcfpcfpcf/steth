@@ -1,0 +1,62 @@
+{
+  "pools": [
+    {
+      "name": "vram",
+      "capacity_bytes": null
+    },
+    {
+      "name": "dram",
+      "capacity_bytes": null
+    }
+  ],
+  "models": [
+    {
+      "id": "llama3.2:1b",
+      "engine": "",
+      "endpoint": "",
+      "state": "loaded",
+      "queued": null,
+      "kv_tokens": null,
+      "context": 4096,
+      "max_context": null,
+      "pools": {
+        "dram": {
+          "weight_bytes": 1447469056,
+          "kv_bytes_per_token": null
+        },
+        "vram": {
+          "weight_bytes": 0,
+          "kv_bytes_per_token": null
+        }
+      },
+      "fidelity": {
+        "context": "measured",
+        "pools": "measured"
+      }
+    },
+    {
+      "id": "qwen2.5:1.5b",
+      "engine": "",
+      "endpoint": "",
+      "state": "loaded",
+      "queued": null,
+      "kv_tokens": null,
+      "context": 8192,
+      "max_context": null,
+      "pools": {
+        "dram": {
+          "weight_bytes": 779971072,
+          "kv_bytes_per_token": null
+        },
+        "vram": {
+          "weight_bytes": 940757504,
+          "kv_bytes_per_token": null
+        }
+      },
+      "fidelity": {
+        "context": "measured",
+        "pools": "measured"
+      }
+    }
+  ]
+}
