@@ -65,3 +65,14 @@ func TestOwnMemoryAndCmdline(t *testing.T) {
 		t.Errorf("cmdline %q, %v; expected to start with %q", args, err, os.Args[0])
 	}
 }
+
+func TestParentPID(t *testing.T) {
+	parent, err := ParentPID(os.Getpid())
+	if err != nil || parent != os.Getppid() {
+		t.Errorf("parent %d, %v; expected %d", parent, err, os.Getppid())
+	}
+	got, err := parseParent([]byte("4242 (llama (serve) x) S 77 4242 4242 0 -1"))
+	if err != nil || got != 77 {
+		t.Errorf("a name with spaces and parentheses: %d, %v; expected 77", got, err)
+	}
+}

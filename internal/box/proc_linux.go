@@ -139,3 +139,23 @@ func socketOwners() map[uint64]int {
 	}
 	return owners
 }
+
+// ParentPID is the process that started process `pid`.
+func ParentPID(pid int) (int, error) {
+	text, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if err != nil {
+		return 0, err
+	}
+	return parseParent(text)
+}
+
+// parseParent reads the fourth field of /proc/PID/stat, after the command
+// name, which is in parentheses and may hold spaces or parentheses itself.
+func parseParent(stat []byte) (int, error) {
+	end := bytes.LastIndexByte(stat, ')')
+	fields := strings.Fields(string(stat[end+1:]))
+	if end < 0 || len(fields) < 2 {
+		return 0, fmt.Errorf("expected /proc stat, got %q", stat)
+	}
+	return strconv.Atoi(fields[1])
+}
