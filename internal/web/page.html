@@ -199,6 +199,7 @@ th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 0; bo
 td { padding: 9px 0; border-bottom: 1px solid var(--grid); }
 th:not(:first-child), td:not(:first-child) { text-align: right; }
 table.config td { word-break: break-word; vertical-align: top; }
+table.config td:first-child { white-space: nowrap; word-break: normal; }
 table.config td:nth-child(2) { text-align: left; padding-left: 12px; }
 table.config th:nth-child(2) { text-align: left; padding-left: 12px; }
 table.config td:last-child, table.config th:last-child { color: var(--muted); white-space: nowrap; padding-left: 12px; }
@@ -680,7 +681,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel
 
 function modelDetails(status, key) {
   const m = findModel(status, key), c = series(colorOf(m));
-  const perToken = total(Object.values(m.pools || {}), (p) => p.kv_bytes_per_token);
+  /* No pools: nothing is known of where it is held, not that it holds none. */
+  const perToken = m.pools == null ? null : total(Object.values(m.pools), (p) => p.kv_bytes_per_token);
   const reserved = perToken == null || m.context == null ? null : perToken * m.context;
   const pools = status.pools.map((p) => ({ name: p.name, h: holding(m, p.name) }));
   return `
@@ -708,10 +710,11 @@ function modelDetails(status, key) {
       ${m.unloads_at == null ? "" : fact(m, "unloads_at", "Unloads", until)}
     </div>
     <h4>Where it is held</h4>
+    ${m.pools == null ? `<div class="note">${escape(m.engine)} does not say; steth reads its process when it runs on this machine and is visible to this user</div>` : `
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
     ${pools.map(({ name, h }) => `<tr><td>${poolInfo(name).label}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${size(h.held)}</td></tr>`).join("")}
     <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${size(total(pools, (p) => p.h.cache))}</b></td><td><b>${size(total(pools, (p) => p.h.held))}</b></td></tr>
-    </tbody></table>
+    </tbody></table>`}
     ${configTable(m)}`;
 }
 
