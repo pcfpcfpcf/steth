@@ -127,6 +127,7 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .block.serving { animation: glow 1.8s ease-in-out infinite; }
 @keyframes glow { 50% { filter: brightness(1.1) saturate(1.08); } }
 .square.focused .block:not(.selected), .square.focused .free { opacity: .22; }
+.nothing { margin: 0; color: var(--muted); font-size: 14px; }
 .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); font-size: 13px; pointer-events: none; }
 .hint { margin-top: 18px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .hint span { display: inline-flex; align-items: center; gap: 8px; }
@@ -228,6 +229,7 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
   <section>
     <h2>Memory pools</h2>
     <div class="pools" id="pools"></div>
+    <p class="nothing" id="no-pools" hidden>No engine has said what memory this box has yet.</p>
     <div class="hint">
       <span><i class="swatch kv-key"></i>KV cache: its box is what is reserved, the darker part what is in use</span>
       <span><i class="swatch free-key"></i>Free</span>
@@ -238,6 +240,7 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
   <section>
     <h2>Models</h2>
     <div class="models" id="models"></div>
+    <p class="nothing" id="no-models" hidden>No model is loaded.</p>
   </section>
 </main>
 <div class="scrim" id="scrim"></div>
@@ -257,6 +260,8 @@ const POOLS = {
   dram: { label: "Host memory", detail: "DRAM" },
   nvme: { label: "Drive", detail: "NVMe, streamed" },
 };
+/* A pool steth does not know shows as its raw name. */
+const poolInfo = (name) => POOLS[name] || { label: escape(name), detail: "" };
 const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle" };
 /* Ink on a series fill: white, but near-black on yellow. */
 const SERIES_INK = ["#fff", "#fff", "#fff", "#0b0b0b", "#fff", "#fff", "#fff", "#fff"];
@@ -389,12 +394,12 @@ function square(pool) {
   if (squares[pool]) return squares[pool];
   const wrap = document.createElement("div");
   wrap.innerHTML = `
-    <button class="pool-head"><span class="pool-name">${POOLS[pool].label}<small>${POOLS[pool].detail}</small></span>
+    <button class="pool-head"><span class="pool-name">${poolInfo(pool).label}<small>${poolInfo(pool).detail}</small></span>
     <span class="pool-figure"></span></button>
-    <div class="square" role="group" aria-label="${POOLS[pool].label}"><div class="empty"></div></div>`;
+    <div class="square" role="group" aria-label="${poolInfo(pool).label}"><div class="empty"></div></div>`;
   $("pools").appendChild(wrap);
   const view = {
-    el: wrap.querySelector(".square"), figure: wrap.querySelector(".pool-figure"),
+    wrap, el: wrap.querySelector(".square"), figure: wrap.querySelector(".pool-figure"),
     empty: wrap.querySelector(".empty"), blocks: new Map(), free: null,
   };
   wrap.querySelector(".pool-head").addEventListener("click", () => select({ pool }));
@@ -439,6 +444,12 @@ const place = (el, r) => {
 };
 
 function drawPools(status) {
+  for (const [name, view] of Object.entries(squares)) {
+    if (status.pools.some((p) => p.name === name)) continue;
+    view.wrap.remove();
+    delete squares[name];
+  }
+  $("no-pools").hidden = status.pools.length > 0;
   for (const pool of status.pools) {
     const view = square(pool.name);
     const { used, scale } = poolTotals(status, pool);
@@ -464,7 +475,7 @@ function drawPools(status) {
       el.classList.toggle("moving", m.state === "moving");
       el.classList.toggle("serving", m.state === "serving");
       el.classList.toggle("selected", selected.model === keyOf(m));
-      el.setAttribute("aria-label", `${m.id}: ${gb(whole(h))} in ${POOLS[pool.name].label}`);
+      el.setAttribute("aria-label", `${m.id}: ${gb(whole(h))} in ${poolInfo(pool.name).label}`);
       const label = el.querySelector(".label");
       label.querySelector("b").textContent = m.id;
       label.querySelector("span").textContent = gb(whole(h));
@@ -491,7 +502,7 @@ function drawPools(status) {
     }
     view.el.classList.toggle("focused", selected.model != null);
     view.empty.textContent = used > 0 ? "" : drive ? "Nothing streams: every model is held in memory"
-      : absent ? `No ${POOLS[pool.name].label.toLowerCase()} on this box` : "Empty";
+      : absent ? `No ${poolInfo(pool.name).label.toLowerCase()} on this box` : "Empty";
   }
 }
 
@@ -531,6 +542,7 @@ const fill = (m) => (m.context > 0 ? Math.min(1, m.kv_tokens / m.context) : 0);
 
 const rates = new Map();
 function drawModels(status, now) {
+  $("no-models").hidden = status.models.length > 0;
   for (const m of status.models) {
     const el = rowFor(m);
     rates.set(keyOf(m), rate(m, now));
@@ -589,7 +601,7 @@ function modelDetails(status, key) {
     </div>
     <h4>Where it is held</h4>
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
-    ${pools.map(({ name, h }) => `<tr><td>${POOLS[name].label}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${gb(h.held)}</td></tr>`).join("")}
+    ${pools.map(({ name, h }) => `<tr><td>${poolInfo(name).label}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${gb(h.held)}</td></tr>`).join("")}
     <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${gb(sum(pools, (p) => p.h.cache))}</b></td><td><b>${gb(sum(pools, (p) => p.h.held))}</b></td></tr>
     </tbody></table>`;
 }
@@ -597,15 +609,15 @@ function modelDetails(status, key) {
 function poolDetails(status, name) {
   const pool = status.pools.find((p) => p.name === name);
   if (pool.capacity_bytes === 0)
-    return `<div class="panel-head"><h3>${POOLS[name].label}</h3><button class="close" aria-label="Close">×</button></div>
-      <div class="note">No ${POOLS[name].label.toLowerCase()} on this box: every model is held elsewhere.</div>`;
+    return `<div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
+      <div class="note">No ${poolInfo(name).label.toLowerCase()} on this box: every model is held elsewhere.</div>`;
   const { used } = poolTotals(status, pool);
   const drive = pool.capacity_bytes == null;
   const of = drive ? used : pool.capacity_bytes;
   const share = (bytes) => (of > 0 ? bytes / of : 0);
   return `
-    <div class="panel-head"><h3>${POOLS[name].label}</h3><button class="close" aria-label="Close">×</button></div>
-    <div class="note">${POOLS[name].detail}</div>
+    <div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
+    <div class="note">${poolInfo(name).detail}</div>
     <div class="big"><b>${gb(used)}</b><span>${drive ? "streamed from the drive" : `of ${gb(pool.capacity_bytes)} in use`}</span></div>
     ${drive ? "" : `<div class="facts"><div><small>Free</small><span>${gb(pool.capacity_bytes - used)}</span></div>
       <div><small>In use</small><span>${Math.round(share(used) * 100)}%</span></div></div>`}
@@ -635,13 +647,13 @@ function showTip(event, pool, key) {
   const m = findModel(current, key);
   if (!m) {
     const p = current.pools.find((x) => x.name === pool);
-    tip.innerHTML = `<b>${POOLS[pool].label}, free</b>
+    tip.innerHTML = `<b>${poolInfo(pool).label}, free</b>
       <div class="row"><span>Free</span><span>${gb(p.capacity_bytes - poolTotals(current, p).used)}</span></div>
       <div class="more">Click for the whole pool</div>`;
   } else {
     const h = holding(m, pool);
     tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
-      <div class="row"><span>${POOLS[pool].label}, weights</span><span>${gb(h.weights)}</span></div>
+      <div class="row"><span>${poolInfo(pool).label}, weights</span><span>${gb(h.weights)}</span></div>
       <div class="row"><span>KV reserved</span><span>${gb(h.cache)}</span></div>
       <div class="row"><span>KV in use</span><span>${gb(h.held)}</span></div>
       <div class="row"><span>Engine</span><span>${escape(m.engine)}</span></div>
