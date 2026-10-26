@@ -65,7 +65,7 @@ func TestProbe(t *testing.T) {
 	if !Probe(context.Background(), ollama.Client(), ollama.URL) {
 		t.Error("Ollama not recognised")
 	}
-	other := enginetest.Serve(t, map[string]string{"/api/version": "../llamacpp/testdata/single.props.json"})
+	other := enginetest.Serve(t, map[string]string{"/api/version": "../llamacpp/testdata/live.props.json"})
 	if Probe(context.Background(), other.Client(), other.URL) {
 		t.Error("another server's JSON taken for Ollama")
 	}

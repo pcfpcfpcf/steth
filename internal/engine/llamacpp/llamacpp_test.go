@@ -23,8 +23,9 @@ func newSource(url string, client *http.Client, procs enginetest.Processes) *Sou
 func TestReadMatchesSchema(t *testing.T) {
 	cases := map[string]map[string]string{
 		"single": {
-			"/props": "testdata/single.props.json",
-			"/slots": "testdata/single.slots.json",
+			"/props":   "testdata/live.props.json",
+			"/slots":   "testdata/live.slots.json",
+			"/metrics": "testdata/live.metrics.1.txt",
 		},
 		// No /slots: reading it would wake the server.
 		"sleeping": {
@@ -53,9 +54,9 @@ func TestReadMatchesSchema(t *testing.T) {
 // read has none.
 func TestSpeedsFromTwoReads(t *testing.T) {
 	server := enginetest.Serve(t, map[string]string{
-		"/props":   "testdata/metrics.props.json",
-		"/slots":   "testdata/single.slots.json",
-		"/metrics": "testdata/metrics.1.txt",
+		"/props":   "testdata/live.props.json",
+		"/slots":   "testdata/live.slots.json",
+		"/metrics": "testdata/live.metrics.1.txt",
 	})
 	source := newSource(server.URL, server.Client(), nil)
 	first, err := source.Read(context.Background())
@@ -65,12 +66,12 @@ func TestSpeedsFromTwoReads(t *testing.T) {
 	if m := first.Models[0]; m.DecodeTPS != nil || m.PrefillTPS != nil {
 		t.Error("first read has a speed; expected none without an earlier read")
 	}
-	server.Answer("/metrics", "testdata/metrics.2.txt")
+	server.Answer("/metrics", "testdata/live.metrics.2.txt")
 	second, err := source.Read(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	enginetest.Match(t, second, "testdata/metrics.want.json")
+	enginetest.Match(t, second, "testdata/speeds.want.json")
 }
 
 // A server whose process can be seen: its memory, its command line, the
@@ -78,8 +79,8 @@ func TestSpeedsFromTwoReads(t *testing.T) {
 // that would keep it from sleeping.
 func TestVisibleProcess(t *testing.T) {
 	server := enginetest.Serve(t, map[string]string{
-		"/props":   "testdata/metrics.props.json",
-		"/metrics": "testdata/metrics.1.txt",
+		"/props":   "testdata/live.props.json",
+		"/metrics": "testdata/live.metrics.1.txt",
 	})
 	port := local.Port(server.URL)
 	procs := enginetest.Processes{port: {
@@ -136,7 +137,7 @@ func TestRuns(t *testing.T) {
 
 func TestProbe(t *testing.T) {
 	for file, want := range map[string]bool{
-		"testdata/single.props.json":      true,
+		"testdata/live.props.json":        true,
 		"testdata/router.props.json":      true,
 		"../ollama/testdata/version.json": false,
 	} {

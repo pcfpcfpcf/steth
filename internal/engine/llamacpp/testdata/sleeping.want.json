@@ -2,13 +2,13 @@
   "pools": null,
   "models": [
     {
-      "id": "Qwen3.5-0.8B-Q8_0",
+      "id": "/home/esc/models/Qwen3.5-0.8B-Q8_0.gguf",
       "engine": "",
       "endpoint": "",
       "state": "sleeping",
       "queued": null,
       "kv_tokens": null,
-      "context": 8192,
+      "context": 4096,
       "max_context": null,
       "pools": null,
       "running": null,
@@ -17,11 +17,11 @@
       "unloads_at": null,
       "config": {
         "build_info": {
-          "value": "b0-a469940",
+          "value": "b10217-ddd4ec142",
           "source": "/props"
         },
         "endpoint_metrics": {
-          "value": false,
+          "value": true,
           "source": "/props"
         },
         "endpoint_slots": {
@@ -33,15 +33,15 @@
           "source": "/props"
         },
         "model_path": {
-          "value": "/models/Qwen3.5-0.8B-Q8_0.gguf",
+          "value": "/home/esc/models/Qwen3.5-0.8B-Q8_0.gguf",
           "source": "/props"
         },
         "n_ctx": {
-          "value": 8192,
+          "value": 4096,
           "source": "/props"
         },
         "total_slots": {
-          "value": 4,
+          "value": 2,
           "source": "/props"
         }
       },
