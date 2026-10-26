@@ -552,6 +552,14 @@ function drawModels(status) {
     el.querySelector(".rate").textContent = m.decode_tps == null ? "" : tps(m.decode_tps);
   }
 }
+/* How long until a time: "in 4 min", "in 40 s", "now". */
+function until(when) {
+  const seconds = Math.round((Date.parse(when) - Date.now()) / 1000);
+  if (seconds <= 0) return "now";
+  if (seconds < 90) return `in ${seconds} s`;
+  if (seconds < 90 * 60) return `in ${Math.round(seconds / 60)} min`;
+  return `in ${Math.round(seconds / 3600)} h`;
+}
 const tps = (r) => `${r.toFixed(r >= 100 ? 0 : 1)} tok/s`;
 
 /* One fact of a model: its value, a dash where the engine does not say it,
@@ -615,6 +623,9 @@ function modelDetails(status, key) {
       <div><small>KV per token</small><span>${size(perToken)}</span></div>
       ${fact(m, "decode_tps", "Decode", tps)}
       ${fact(m, "prefill_tps", "Prefill", tps)}
+      ${fact(m, "running", "Running", count)}
+      ${fact(m, "queued", "Waiting", count)}
+      ${m.unloads_at == null ? "" : fact(m, "unloads_at", "Unloads", until)}
     </div>
     <h4>Where it is held</h4>
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
