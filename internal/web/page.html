@@ -778,13 +778,19 @@ function placeTip(event) {
 }
 function hideTip() { $("tip").classList.remove("shown"); }
 
-function drawSources(sources) {
-  const failed = sources.filter((s) => !s.ok);
+/* The box -- the machine's own memory figures -- is a source but not an
+   engine, so it is named on its own. */
+const BOX = "box";
+function drawSources(all) {
+  const failed = all.filter((s) => !s.ok);
   const detail = failed.map((s) => `${s.engine} at ${s.endpoint}: ${s.error}`).join("\n");
+  const engines = all.filter((s) => s.engine !== BOX);
+  const down = failed.filter((s) => s.engine !== BOX);
   if (failed.length === 0) setLive("on", "live");
-  else if (failed.length === sources.length)
-    setLive("off", sources.length === 1 ? `${sources[0].engine} is not answering` : "no engine is answering", detail);
-  else setLive("partial", `${failed.length} of ${sources.length} engines not answering`, detail);
+  else if (engines.length && down.length === engines.length)
+    setLive("off", engines.length === 1 ? `${engines[0].engine} is not answering` : "no engine is answering", detail);
+  else if (down.length) setLive("partial", `${down.length} of ${engines.length} engines not answering`, detail);
+  else setLive("partial", "box memory not readable", detail);
 }
 
 /* ---- the poll ---- */

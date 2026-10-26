@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pcfpcfpcf/steth/internal/box"
 	"github.com/pcfpcfpcf/steth/internal/collector"
 	"github.com/pcfpcfpcf/steth/internal/engine/geode"
 	"github.com/pcfpcfpcf/steth/internal/engine/llamacpp"
@@ -74,7 +75,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	c := collector.New(sources, readTimeout)
+	// The box first: the pool sizes it measures take precedence over an
+	// engine's own view of them.
+	c := collector.New(append([]collector.Source{box.Source{}}, sources...), readTimeout)
 	go c.Run(ctx, pollInterval)
 
 	server := &http.Server{Addr: *listen, Handler: web.Handler(c.State)}
