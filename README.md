@@ -14,7 +14,7 @@ never loads, unloads or configures a model.
 |---|---|---|
 | geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue |
 | Ollama | `GET /api/ps` | per-model GPU and host memory, context length; no pool sizes, KV split or busy state |
-| llama.cpp | | planned |
+| llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context; no memory figures. Not yet checked against a running server |
 | vLLM | | planned |
 
 ## Build, run, test

@@ -17,6 +17,7 @@ import (
 
 	"github.com/pcfpcfpcf/steth/internal/collector"
 	"github.com/pcfpcfpcf/steth/internal/engine/geode"
+	"github.com/pcfpcfpcf/steth/internal/engine/llamacpp"
 	"github.com/pcfpcfpcf/steth/internal/engine/ollama"
 	"github.com/pcfpcfpcf/steth/internal/web"
 )
@@ -31,8 +32,9 @@ const (
 
 // engines makes an adapter for each engine a target can name.
 var engines = map[string]func(endpoint string, client *http.Client) collector.Source{
-	geode.Engine:  func(e string, c *http.Client) collector.Source { return geode.New(e, c) },
-	ollama.Engine: func(e string, c *http.Client) collector.Source { return ollama.New(e, c) },
+	geode.Engine:    func(e string, c *http.Client) collector.Source { return geode.New(e, c) },
+	ollama.Engine:   func(e string, c *http.Client) collector.Source { return ollama.New(e, c) },
+	llamacpp.Engine: func(e string, c *http.Client) collector.Source { return llamacpp.New(e, c) },
 }
 
 // targets collects repeated --target engine=URL flags.
