@@ -8,36 +8,57 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 )
 
 var update = flag.Bool("update", false, "rewrite the expected JSON from what the adapter reads")
 
-// Serve answers each path in `fixtures` with the file it names, and any
+// Server answers each path it was given with the file it names, and any
 // other path with 404. A path with a query matches only that query; one
 // without matches any.
-func Serve(t *testing.T, fixtures map[string]string) *httptest.Server {
-	bodies := map[string][]byte{}
+type Server struct {
+	*httptest.Server
+	t      *testing.T
+	mu     sync.Mutex
+	bodies map[string][]byte
+}
+
+// Serve starts a Server answering `fixtures`, path to file.
+func Serve(t *testing.T, fixtures map[string]string) *Server {
+	s := &Server{t: t, bodies: map[string][]byte{}}
 	for path, file := range fixtures {
-		body, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		bodies[path] = body
+		s.Answer(path, file)
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, ok := bodies[r.URL.RequestURI()]
-		if !ok {
-			body, ok = bodies[r.URL.Path]
-		}
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		w.Write(body)
-	}))
-	t.Cleanup(server.Close)
-	return server
+	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
+	t.Cleanup(s.Close)
+	return s
+}
+
+// Answer makes `path` answer with `file` from now on, as an engine's
+// counters move between two reads.
+func (s *Server) Answer(path, file string) {
+	body, err := os.ReadFile(file)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bodies[path] = body
+}
+
+func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	body, ok := s.bodies[r.URL.RequestURI()]
+	if !ok {
+		body, ok = s.bodies[r.URL.Path]
+	}
+	s.mu.Unlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.Write(body)
 }
 
 // Match fails the test unless `got`, as indented JSON, equals the file
