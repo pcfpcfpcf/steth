@@ -21,6 +21,8 @@ const (
 	Queued  = "queued"
 	Moving  = "moving"
 	Idle    = "idle"
+	// Loaded is a model whose engine does not say whether it is busy.
+	Loaded = "loaded"
 )
 
 // How a non-null field was obtained.

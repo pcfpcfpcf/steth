@@ -262,7 +262,7 @@ const POOLS = {
 };
 /* A pool steth does not know shows as its raw name. */
 const poolInfo = (name) => POOLS[name] || { label: escape(name), detail: "" };
-const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle" };
+const STATES = { serving: "Serving", queued: "Queued", moving: "Moving", idle: "Idle", loaded: "Loaded" };
 /* Ink on a series fill: white, but near-black on yellow. */
 const SERIES_INK = ["#fff", "#fff", "#fff", "#0b0b0b", "#fff", "#fff", "#fff", "#fff"];
 
@@ -545,7 +545,7 @@ function rate(model, now) {
 }
 
 const stateBadge = (m) =>
-  `<span class="state ${m.state}"><i></i><span>${STATES[m.state]}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
+  `<span class="state ${escape(m.state)}"><i></i><span>${STATES[m.state] ?? escape(m.state)}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
 const fill = (m) => (m.context > 0 ? Math.min(1, m.kv_tokens / m.context) : 0);
 
 const rates = new Map();
