@@ -12,9 +12,9 @@ never loads, unloads or configures a model.
 
 | engine | reads | status |
 |---|---|---|
-| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue |
-| Ollama | `GET /api/ps` | per-model GPU and host memory, context length; no pool sizes, KV split or busy state |
-| llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context; no memory figures. Not yet checked against a running server |
+| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue; no speed yet |
+| Ollama | `GET /api/ps` | per-model GPU and host memory, context length, unload time, model details; no pool sizes, KV split, busy state or speed |
+| llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context, running requests, settings; with `--metrics`, decode and prefill speed and requests waiting; no memory figures. Not yet checked against a running server |
 | vLLM | | planned |
 
 ## Build, run, test
@@ -25,7 +25,10 @@ Needs Go 1.24 or later.
     ./steth --target ollama=http://127.0.0.1:11434 --target geode=http://127.0.0.1:8080
     go test ./...
 
-Then open http://127.0.0.1:7474. `--target ENGINE=URL` repeats for more
+Then open http://127.0.0.1:7474. Click a model for its speeds over the
+last two minutes, its requests, and its settings as the engine reports them;
+a dash is something its engine does not say, and `derived` marks a number
+steth computed from what it does say. `--target ENGINE=URL` repeats for more
 engines; `--listen ADDR` moves the page.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is

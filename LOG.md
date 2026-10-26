@@ -4,6 +4,16 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **Speeds are the engine's, or none.** The ported page guessed a rate from
+  KV cache growth; that counts a prompt's prefill as decoding, so it is
+  gone. geode shows no speed until it reports one itself. llama.cpp speeds
+  are derived from counter deltas over the seconds spent on them.
+- **The collector keeps two minutes of speeds** per model (at most 240
+  samples), only polls that had one, so a page opened late still draws a
+  sparkline. Decode and prefill are separate sparklines with their own
+  scale: they differ a hundredfold, and one chart has one axis.
+- **Config is the engine's own names,** read-only, each with where it was
+  read; steth does not translate them into a common vocabulary.
 - **llama.cpp is now `llama serve`,** a subcommand of one `llama` binary
   linking the same server code; its default port is 9931, not 8080. The
   adapter is written from the source at commit a469940, not from a running
