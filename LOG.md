@@ -4,6 +4,29 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **llama.cpp is now `llama serve`,** a subcommand of one `llama` binary
+  linking the same server code; its default port is 9931, not 8080. The
+  adapter is written from the source at commit a469940, not from a running
+  server: building downloaded code was not permitted in this session. Live
+  check still owed.
+- **What llama.cpp says, read from its source.** `/props` (model alias,
+  per-slot `n_ctx`, `total_slots`, `endpoint_slots`, `is_sleeping`) and
+  `/metrics` never wake a sleeping server. `/slots` does, and resets the
+  idle timer, so the adapter skips it while the server sleeps. Polling it
+  every second keeps a server started with `--sleep-idle-seconds` from ever
+  sleeping; the fix waits for launch args (stage 5) to show the flag.
+  `/metrics` has no KV metric at this commit: the `kv_cache_usage_ratio`
+  name in the plan belongs to a fork.
+- **KV held is the sum of every slot's `n_prompt_tokens`;** a slot keeps its
+  last conversation cached after it ends. Context is one slot's `n_ctx`:
+  the whole cache in the default layout (four slots sharing one unified
+  cache), a 1/N share with `--parallel N` and no `--kv-unified`. HTTP does
+  not say which; launch args will.
+- **Router mode** (`llama serve` without a model): `/v1/models` lists models
+  with a status; each `loaded` one is read through `?model=` with
+  `autoload=false`, since a plain GET would make the router load it.
+  `sleeping` and `loading` models are listed without reading them; others
+  are not in memory and are left out.
 - **Ollama speed stays unavailable.** `/api/ps` reports no throughput or
   busy state. A pass-through proxy that times requests was rejected: steth
   reads engines, it does not sit in their path, and a proxy only sees
@@ -20,7 +43,6 @@ Decisions as they are made, newest first.
   load and unload keep each model's colour and drop what was drawn for it.
 - **Pools Ollama reports are only those a model is in,** so a box without a
   GPU shows no GPU square.
-
 - **Go, Apache-2.0, module `github.com/pcfpcfpcf/steth`.** One static binary
   with the page embedded; runs on Linux, macOS and Windows. Python (as
   inferwatch) needs a runtime on the box; C needs a hand-rolled HTTP server.
