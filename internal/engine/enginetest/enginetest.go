@@ -14,7 +14,8 @@ import (
 var update = flag.Bool("update", false, "rewrite the expected JSON from what the adapter reads")
 
 // Serve answers each path in `fixtures` with the file it names, and any
-// other path with 404.
+// other path with 404. A path with a query matches only that query; one
+// without matches any.
 func Serve(t *testing.T, fixtures map[string]string) *httptest.Server {
 	bodies := map[string][]byte{}
 	for path, file := range fixtures {
@@ -25,7 +26,10 @@ func Serve(t *testing.T, fixtures map[string]string) *httptest.Server {
 		bodies[path] = body
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, ok := bodies[r.URL.Path]
+		body, ok := bodies[r.URL.RequestURI()]
+		if !ok {
+			body, ok = bodies[r.URL.Path]
+		}
 		if !ok {
 			http.NotFound(w, r)
 			return
