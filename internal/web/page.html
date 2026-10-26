@@ -183,6 +183,10 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .note { margin-top: 8px; font-size: 13px; color: var(--muted); }
 .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
 .facts small, .panel h4 { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0; }
+.spark { display: block; margin-top: 6px; overflow: visible; }
+.spark path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { stroke: var(--surface); stroke-width: 2; }
+.spark-base { stroke: var(--grid); stroke-width: 1; }
 .fid { font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; margin-left: 4px; padding: 0 5px; border-radius: 4px; background: var(--track); color: var(--ink-2); }
 .facts span { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .panel h4 { margin: 28px 0 8px; }
@@ -568,10 +572,67 @@ function fact(m, field, label, format) {
   const value = m[field];
   const derived = m.fidelity?.[field] === "derived";
   const shown = value == null
-    ? `<span title="${escape(m.engine)} does not report this">–</span>`
+    ? `<span title="${escape(missing(m, field))}">–</span>`
     : `<span>${format(value)}</span>`;
-  return `<div><small>${label}${derived ? ` <em class="fid" title="Computed by steth from what ${escape(m.engine)} reports">derived</em>` : ""}</small>${shown}</div>`;
+  return `<div><small>${label}${derived ? ` <em class="fid" title="Computed by steth from what ${escape(m.engine)} reports">derived</em>` : ""}</small>${shown}${field in SPEEDS ? sparkline(m, field) : ""}</div>`;
 }
+
+/* Why a fact is a dash. A speed is null between requests as well as for an
+   engine that never reports one. */
+function missing(m, field) {
+  if (!(field in SPEEDS)) return `${m.engine} does not report this`;
+  return speedSamples(m, field).length ? "Nothing ran since the last poll"
+    : `Nothing ran in the last two minutes, or ${m.engine} does not report it`;
+}
+
+/* ---- sparklines: a speed over the collector's last two minutes ---- */
+const SPEEDS = { decode_tps: "Decode", prefill_tps: "Prefill" };
+const HISTORY_MS = 120000;
+/* Samples further apart than this draw a gap: the model ran nothing between. */
+const GAP_MS = 3 * POLL_MS;
+const SPARK = { width: 160, height: 36, dot: 4 };
+
+const speedSamples = (m, field) => (m.speed_history || []).filter((s) => s[field] != null);
+/* x of a time, now at the right edge. */
+const sparkX = (time, now) => ((Date.parse(time) - (now - HISTORY_MS)) / HISTORY_MS) * SPARK.width;
+
+/* One speed's line, scaled from zero to its own peak, each speed on its own
+   chart: decode and prefill differ a hundredfold. */
+function sparkline(m, field) {
+  const samples = speedSamples(m, field);
+  if (samples.length === 0) return "";
+  const now = Date.now(), { width, height, dot } = SPARK;
+  const peak = Math.max(...samples.map((s) => s[field])) || 1;
+  const y = (v) => height - dot - (v / peak) * (height - 2 * dot);
+  let path = "", previous = null;
+  for (const s of samples) {
+    const t = Date.parse(s.time);
+    path += `${previous == null || t - previous > GAP_MS ? "M" : "L"}${sparkX(s.time, now).toFixed(1)},${y(s[field]).toFixed(1)}`;
+    previous = t;
+  }
+  const last = samples[samples.length - 1];
+  return `<svg class="spark" data-field="${field}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
+    role="img" aria-label="${SPEEDS[field]} over the last two minutes, peak ${tps(peak)}">
+    <line x1="0" x2="${width}" y1="${height - dot}" y2="${height - dot}" class="spark-base"/>
+    <path d="${path}" style="stroke:${series(colorOf(m))}"/>
+    <circle cx="${sparkX(last.time, now).toFixed(1)}" cy="${y(last[field]).toFixed(1)}" r="${dot}" style="fill:${series(colorOf(m))}"/>
+  </svg>`;
+}
+
+/* The sample under the pointer, in the tooltip. */
+$("panel").addEventListener("mousemove", (event) => {
+  const svg = event.target.closest?.(".spark");
+  const m = svg && current && findModel(current, selected.model);
+  if (!m) return;
+  const field = svg.dataset.field, now = Date.now();
+  const x = event.clientX - svg.getBoundingClientRect().left;
+  const samples = speedSamples(m, field);
+  const near = samples.reduce((a, b) => (Math.abs(sparkX(b.time, now) - x) < Math.abs(sparkX(a.time, now) - x) ? b : a));
+  $("tip").innerHTML = `<b>${SPEEDS[field]}</b>
+    <div class="row"><span>${Math.max(0, Math.round((now - Date.parse(near.time)) / 1000))} s ago</span><span>${tps(near[field])}</span></div>`;
+  placeTip(event);
+});
+$("panel").addEventListener("mouseout", (event) => { if (event.target.closest?.(".spark")) hideTip(); });
 
 function drawSummary(status) {
   const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
@@ -689,6 +750,10 @@ function showTip(event, pool, key) {
       <div class="row"><span>Context</span><span>${tokens(m, count)}</span></div>
       <div class="more">Click for details</div>`;
   }
+  placeTip(event);
+}
+function placeTip(event) {
+  const tip = $("tip");
   const x = Math.min(event.clientX + 14, innerWidth - tip.offsetWidth - 12);
   const y = event.clientY - tip.offsetHeight - 14;
   tip.style.left = `${x}px`;
