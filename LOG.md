@@ -4,6 +4,12 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **Sleep handling checked live** (`--sleep-idle-seconds 5`, no
+  `--metrics`). Polling `/slots` every second kept the server awake for 12 s;
+  it slept within 7 s of stopping. steth, which skips `/slots` for a server
+  launched to sleep, let it fall asleep while polling, showed it `sleeping`
+  at 212 MB, `loaded` at 1.1 GB when a request woke it (no `/metrics` and no
+  `/slots`: busy state unknown), and `sleeping` again about 6 s after.
 - **llama.cpp checked live** (`llama serve` b10217, two slots, with
   `--metrics`). Every field and metric name read from source is there. Its
   default port in this build is 8080. With `-np 2` the server reports
