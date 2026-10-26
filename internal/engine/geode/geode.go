@@ -5,11 +5,10 @@ package geode
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"maps"
 	"net/http"
 
+	"github.com/pcfpcfpcf/steth/internal/engine/fetch"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
@@ -63,7 +62,7 @@ var fidelity = map[string]string{
 
 func (s *Source) Read(ctx context.Context) (state.Reading, error) {
 	var status wireStatus
-	if err := getJSON(ctx, s.client, s.endpoint+"/v1/pool", &status); err != nil {
+	if err := fetch.JSON(ctx, s.client, s.endpoint+"/v1/pool", &status); err != nil {
 		return state.Reading{}, err
 	}
 	reading := state.Reading{}
@@ -91,23 +90,4 @@ func toModel(m wireModel) state.Model {
 		Pools:      pools,
 		Fidelity:   maps.Clone(fidelity),
 	}
-}
-
-func getJSON(ctx context.Context, client *http.Client, url string, into any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GET %s: status %d, expected 200", url, resp.StatusCode)
-	}
-	if err := json.NewDecoder(resp.Body).Decode(into); err != nil {
-		return fmt.Errorf("GET %s: %w", url, err)
-	}
-	return nil
 }
