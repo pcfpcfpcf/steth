@@ -25,7 +25,10 @@ Needs Go 1.24 or later.
     ./steth
     go test ./...
 
-Then open http://127.0.0.1:7474.
+Then open http://127.0.0.1:7474. Click a model for its speeds over the last
+two minutes, its requests, and its settings as the engine reports them; a
+dash is something its engine does not say, and `derived` marks a number
+steth computed from what it does say.
 
 steth finds the engines on its machine by itself: every listening socket
 whose process runs an engine (`ollama serve`, `llama serve`, `geode serve`),
@@ -37,10 +40,7 @@ on another machine; repeat it for more. `-discover=false` reads only those.
 
 On Linux steth also reads the machine itself: each pool's size and how much
 of it is in use, from `/proc/meminfo` and `nvidia-smi`. Other systems are not
-read yet. Click a model for its speeds over the
-last two minutes, its requests, and its settings as the engine reports them;
-a dash is something its engine does not say, and `derived` marks a number
-steth computed from what it does say.
+read yet.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
