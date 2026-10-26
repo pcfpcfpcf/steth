@@ -2,6 +2,7 @@ package vllm
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,5 +53,31 @@ func TestReadFailsWithoutMetrics(t *testing.T) {
 	server := enginetest.Serve(t, map[string]string{"/v1/models": "testdata/models.json"})
 	if _, err := New(server.URL, server.Client()).Read(context.Background()); err == nil {
 		t.Error("expected an error without /metrics")
+	}
+}
+
+func TestRuns(t *testing.T) {
+	for cmdline, want := range map[string]bool{
+		"/usr/bin/python3 /usr/local/bin/vllm serve Qwen/Qwen3-8B":           true,
+		"vllm serve Qwen/Qwen3-8B --port 8001":                               true,
+		"python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-8B": true,
+		"vllm bench serve": false,
+		"python -c from vllm.v1.engine.core import run_engine_core": false,
+	} {
+		if got := Runs(strings.Fields(cmdline)); got != want {
+			t.Errorf("%q: %v, expected %v", cmdline, got, want)
+		}
+	}
+}
+
+func TestProbe(t *testing.T) {
+	for file, want := range map[string]bool{
+		"testdata/models.json":                    true,
+		"../llamacpp/testdata/router.models.json": false,
+	} {
+		server := enginetest.Serve(t, map[string]string{"/v1/models": file})
+		if got := Probe(context.Background(), server.Client(), server.URL); got != want {
+			t.Errorf("%s: %v, expected %v", file, got, want)
+		}
 	}
 }

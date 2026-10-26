@@ -21,6 +21,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/engine/geode"
 	"github.com/pcfpcfpcf/steth/internal/engine/llamacpp"
 	"github.com/pcfpcfpcf/steth/internal/engine/ollama"
+	"github.com/pcfpcfpcf/steth/internal/engine/vllm"
 	"github.com/pcfpcfpcf/steth/internal/web"
 )
 
@@ -45,6 +46,8 @@ var engines = []discover.Engine{
 		New: func(url string, c *http.Client) collector.Source { return ollama.New(url, c) }},
 	{Name: llamacpp.Engine, Runs: llamacpp.Runs, Ports: llamacpp.Ports, Probe: llamacpp.Probe,
 		New: func(url string, c *http.Client) collector.Source { return llamacpp.New(url, c) }},
+	{Name: vllm.Engine, Runs: vllm.Runs, Ports: vllm.Ports, Probe: vllm.Probe,
+		New: func(url string, c *http.Client) collector.Source { return vllm.New(url, c) }},
 }
 
 // targets collects repeated --target engine=URL flags.

@@ -48,6 +48,7 @@ func (s *Source) Endpoint() string { return s.endpoint }
 type wireModels struct {
 	Data []struct {
 		ID          string  `json:"id"`
+		OwnedBy     string  `json:"owned_by"`
 		Root        string  `json:"root"`
 		Parent      *string `json:"parent"`
 		MaxModelLen *int64  `json:"max_model_len"`
