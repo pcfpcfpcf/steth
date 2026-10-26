@@ -1,0 +1,3 @@
+# Recorded responses and expected JSON are compared byte for byte; keep
+# them as recorded on every system.
+**/testdata/** -text
