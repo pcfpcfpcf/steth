@@ -12,12 +12,10 @@ never loads, unloads or configures a model.
 
 | engine | reads | status |
 |---|---|---|
-| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue; no speed yet |
+| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue; no speed yet. An internal tool, still not out |
 | Ollama | `GET /api/ps` | per-model GPU and host memory, context length, unload time, model details; no pool sizes, KV split, busy state or speed |
 | llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context, running requests, settings; with `--metrics`, decode and prefill speed and requests waiting; no memory figures from HTTP; from its process where visible. Checked live with build b10217, router mode included |
 | vLLM | `GET /v1/models`, `GET /metrics` | state, requests running and waiting, KV tokens held of the cache's size, decode and prefill speed, cache settings, sleep. Not yet checked against a running server |
-
-geode is an internal tool that is not out yet.
 
 ## Build, run, test
 
