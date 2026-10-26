@@ -15,7 +15,7 @@ never loads, unloads or configures a model.
 | geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue; no speed yet |
 | Ollama | `GET /api/ps` | per-model GPU and host memory, context length, unload time, model details; no pool sizes, KV split, busy state or speed |
 | llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context, running requests, settings; with `--metrics`, decode and prefill speed and requests waiting; no memory figures. Not yet checked against a running server |
-| vLLM | | planned |
+| vLLM | `GET /v1/models`, `GET /metrics` | state, requests running and waiting, KV tokens held of the cache's size, decode and prefill speed, cache settings, sleep. Not yet checked against a running server |
 
 ## Build, run, test
 
@@ -31,7 +31,8 @@ dash is something its engine does not say, and `derived` marks a number
 steth computed from what it does say.
 
 steth finds the engines on its machine by itself: every listening socket
-whose process runs an engine (`ollama serve`, `llama serve`, `geode serve`),
+whose process runs an engine (`ollama serve`, `llama serve`, `vllm serve`,
+`geode serve`),
 asked as that engine to confirm, and, where the process is another user's,
 such as a system service, the engines' default ports. It looks again every
 10 seconds. `--target ENGINE=URL` adds one it cannot find, such as an engine
@@ -39,8 +40,9 @@ on another machine; repeat it for more. `-discover=false` reads only those.
 `--listen ADDR` moves the page.
 
 On Linux steth also reads the machine itself: each pool's size and how much
-of it is in use, from `/proc/meminfo` and `nvidia-smi`. Other systems are not
-read yet.
+of it is in use, from `/proc/meminfo` and `nvidia-smi`, and, for llama.cpp
+and vLLM servers it can see, what their processes hold and how they were
+launched. Other systems are not read yet.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).

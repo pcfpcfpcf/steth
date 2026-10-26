@@ -4,6 +4,25 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **vLLM is written from its source at commit 442f3d9;** this GPU (compute
+  capability 5.0) cannot run it, so the live check is owed. The plan's
+  metric names hold: `num_requests_running`/`waiting`,
+  `kv_cache_usage_perc`, `prompt_tokens_total`, `generation_tokens_total`,
+  all labelled `model_name` and `engine`. `cache_config_info` is a gauge at
+  1 whose labels are every cache setting, including `kv_cache_size_tokens`;
+  it carries no `model_name`.
+- **vLLM's context is its KV cache's size in tokens** (`kv_cache_size_tokens`,
+  else blocks × block size), shared by every request; KV held is usage ×
+  size, marked derived. `max_model_len` caps one request, so it is config,
+  not `max_context`. With data parallelism, usage is summed over engines
+  against engine 0's size: wrong past one engine, left until someone runs
+  one.
+- **vLLM speeds are tokens over wall time** between two reads: vLLM keeps
+  no counter of time spent generating. Under batching that is the server's
+  throughput, not one request's speed.
+- **A process's memory includes its children:** vLLM keeps its weights and
+  cache in an engine-core child process, and its workers under tensor
+  parallelism.
 - **llama.cpp's own process, where steth can see it,** fills what HTTP does
   not: its memory per pool (nvidia-smi per PID, resident host memory), its
   command line as config, whether it sleeps when idle (then `/slots` is not
