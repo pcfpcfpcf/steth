@@ -159,3 +159,26 @@ func parseParent(stat []byte) (int, error) {
 	}
 	return strconv.Atoi(fields[1])
 }
+
+// parentsOfAll maps every process this user can read to its parent.
+func parentsOfAll() (map[int]int, error) {
+	stats, err := filepath.Glob("/proc/[0-9]*/stat")
+	if err != nil {
+		return nil, err
+	}
+	parents := map[int]int{}
+	for _, path := range stats {
+		pid, err := strconv.Atoi(strings.Split(path, "/")[2])
+		if err != nil {
+			continue
+		}
+		text, err := os.ReadFile(path)
+		if err != nil {
+			continue // gone since the glob
+		}
+		if parent, err := parseParent(text); err == nil {
+			parents[pid] = parent
+		}
+	}
+	return parents, nil
+}

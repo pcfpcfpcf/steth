@@ -58,16 +58,23 @@ func (Source) Read(ctx context.Context) (state.Reading, error) {
 	return reading, nil
 }
 
-// ProcessMemory is what process `pid` holds in each pool: GPU memory as
-// nvidia-smi reports it, and its resident host memory, which counts the
-// pages of a memory-mapped model file it has touched.
+// ProcessMemory is what process `pid` and every process it started hold in
+// each pool: GPU memory as nvidia-smi reports it, and resident host memory,
+// which counts the pages of a memory-mapped model file they touched. An
+// engine may keep its model in a child, as vLLM does.
 func ProcessMemory(ctx context.Context, pid int) (map[string]uint64, error) {
-	held := map[string]uint64{}
-	rss, err := residentMemory(pid)
+	tree, err := processTree(pid)
 	if err != nil {
 		return nil, err
 	}
-	held[state.DRAM] = rss
+	held := map[string]uint64{}
+	for _, p := range tree {
+		rss, err := residentMemory(p)
+		if err != nil && p == pid {
+			return nil, err
+		}
+		held[state.DRAM] += rss // a child gone since the tree was read holds nothing
+	}
 	apps, err := runNvidia(ctx, "--query-compute-apps=pid,used_memory")
 	if errors.Is(err, exec.ErrNotFound) {
 		return held, nil
@@ -79,8 +86,28 @@ func ProcessMemory(ctx context.Context, pid int) (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	held[state.VRAM] = byPID[pid]
+	held[state.VRAM] = 0
+	for _, p := range tree {
+		held[state.VRAM] += byPID[p]
+	}
 	return held, nil
+}
+
+// processTree is `pid` and every process below it.
+func processTree(pid int) ([]int, error) {
+	parents, err := parentsOfAll()
+	if err != nil {
+		return nil, err
+	}
+	tree := []int{pid}
+	for i := 0; i < len(tree); i++ {
+		for child, parent := range parents {
+			if parent == tree[i] {
+				tree = append(tree, child)
+			}
+		}
+	}
+	return tree, nil
 }
 
 func runNvidia(ctx context.Context, query string) ([]byte, error) {
