@@ -2,6 +2,7 @@ package ollama
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,5 +45,28 @@ func TestKeptForGoodNeverUnloads(t *testing.T) {
 	w.ExpiresAt = recorded.Add(5 * time.Minute)
 	if m := toModel(w, recorded); m.UnloadsAt == nil {
 		t.Error("expected an unload time five minutes ahead")
+	}
+}
+
+func TestRuns(t *testing.T) {
+	for cmdline, want := range map[string]bool{
+		"/usr/local/bin/ollama serve":                                    true,
+		"/usr/local/bin/ollama runner --model /models/blob --port 40411": false,
+		"ollama": false,
+	} {
+		if got := Runs(strings.Fields(cmdline)); got != want {
+			t.Errorf("%q: %v, expected %v", cmdline, got, want)
+		}
+	}
+}
+
+func TestProbe(t *testing.T) {
+	ollama := enginetest.Serve(t, map[string]string{"/api/version": "testdata/version.json"})
+	if !Probe(context.Background(), ollama.Client(), ollama.URL) {
+		t.Error("Ollama not recognised")
+	}
+	other := enginetest.Serve(t, map[string]string{"/api/version": "../llamacpp/testdata/single.props.json"})
+	if Probe(context.Background(), other.Client(), other.URL) {
+		t.Error("another server's JSON taken for Ollama")
 	}
 }
