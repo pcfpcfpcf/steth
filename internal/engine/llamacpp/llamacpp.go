@@ -47,6 +47,10 @@ type wireProps struct {
 	ModelAlias                string `json:"model_alias"`
 	EndpointSlots             bool   `json:"endpoint_slots"`
 	EndpointMetrics           bool   `json:"endpoint_metrics"`
+	TotalSlots                int64  `json:"total_slots"`
+	ModelPath                 string `json:"model_path"`
+	ModelFtype                string `json:"model_ftype"`
+	BuildInfo                 string `json:"build_info"`
 	IsSleeping                bool   `json:"is_sleeping"`
 	DefaultGenerationSettings struct {
 		NCtx int64 `json:"n_ctx"`
@@ -62,7 +66,8 @@ type wireRouterModels struct {
 	Data []struct {
 		ID     string `json:"id"`
 		Status struct {
-			Value string `json:"value"`
+			Value string   `json:"value"`
+			Args  []string `json:"args"`
 		} `json:"status"`
 	} `json:"data"`
 }
@@ -113,11 +118,15 @@ func (s *Source) readRouter(ctx context.Context) (state.Reading, error) {
 				return state.Reading{}, err
 			}
 			m.ID = entry.ID
+			m.Config["args"] = argsOf(entry.Status.Args)
 			reading.Models = append(reading.Models, m)
-		case routerSleeping:
-			reading.Models = append(reading.Models, state.Model{ID: entry.ID, State: state.Sleeping, Fidelity: map[string]string{}})
-		case routerLoading:
-			reading.Models = append(reading.Models, state.Model{ID: entry.ID, State: state.Moving, Fidelity: map[string]string{}})
+		case routerSleeping, routerLoading:
+			m := state.Model{ID: entry.ID, State: state.Sleeping, Fidelity: map[string]string{}}
+			if entry.Status.Value == routerLoading {
+				m.State = state.Moving
+			}
+			m.Config = map[string]state.Setting{"args": argsOf(entry.Status.Args)}
+			reading.Models = append(reading.Models, m)
 		}
 	}
 	return reading, nil
@@ -131,6 +140,7 @@ func (s *Source) readModel(ctx context.Context, props wireProps, model string) (
 		ID:       props.ModelAlias,
 		State:    state.Loaded,
 		Context:  &nCtx,
+		Config:   configOf(props),
 		Fidelity: map[string]string{"context": state.Measured},
 	}
 	// Reading /slots wakes a sleeping server; /metrics does not, but a
@@ -185,4 +195,28 @@ func (s *Source) address(path, model string) string {
 		return s.endpoint + path
 	}
 	return s.endpoint + path + "?" + url.Values{"model": {model}, "autoload": {"false"}}.Encode()
+}
+
+// configOf is the server's settings as /props reports them, under the
+// names it uses.
+func configOf(props wireProps) map[string]state.Setting {
+	values := map[string]any{
+		"n_ctx":            props.DefaultGenerationSettings.NCtx,
+		"total_slots":      props.TotalSlots,
+		"model_path":       props.ModelPath,
+		"model_ftype":      props.ModelFtype,
+		"endpoint_slots":   props.EndpointSlots,
+		"endpoint_metrics": props.EndpointMetrics,
+		"build_info":       props.BuildInfo,
+	}
+	config := make(map[string]state.Setting, len(values))
+	for name, value := range values {
+		config[name] = state.Setting{Value: value, Source: "/props"}
+	}
+	return config
+}
+
+// argsOf is the command line a router started a model's server with.
+func argsOf(args []string) state.Setting {
+	return state.Setting{Value: args, Source: "/v1/models"}
 }

@@ -15,7 +15,36 @@
       "decode_tps": null,
       "prefill_tps": null,
       "unloads_at": null,
-      "config": null,
+      "config": {
+        "build_info": {
+          "value": "b0-a469940",
+          "source": "/props"
+        },
+        "endpoint_metrics": {
+          "value": false,
+          "source": "/props"
+        },
+        "endpoint_slots": {
+          "value": true,
+          "source": "/props"
+        },
+        "model_ftype": {
+          "value": "Q8_0",
+          "source": "/props"
+        },
+        "model_path": {
+          "value": "/models/Qwen3.5-0.8B-Q8_0.gguf",
+          "source": "/props"
+        },
+        "n_ctx": {
+          "value": 8192,
+          "source": "/props"
+        },
+        "total_slots": {
+          "value": 4,
+          "source": "/props"
+        }
+      },
       "fidelity": {
         "context": "measured"
       }

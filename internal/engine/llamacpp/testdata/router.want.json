@@ -15,7 +15,45 @@
       "decode_tps": null,
       "prefill_tps": null,
       "unloads_at": null,
-      "config": null,
+      "config": {
+        "args": {
+          "value": [
+            "llama",
+            "serve",
+            "--port",
+            "41001"
+          ],
+          "source": "/v1/models"
+        },
+        "build_info": {
+          "value": "b0-a469940",
+          "source": "/props"
+        },
+        "endpoint_metrics": {
+          "value": false,
+          "source": "/props"
+        },
+        "endpoint_slots": {
+          "value": true,
+          "source": "/props"
+        },
+        "model_ftype": {
+          "value": "Q8_0",
+          "source": "/props"
+        },
+        "model_path": {
+          "value": "/models/Qwen3.5-0.8B-Q8_0.gguf",
+          "source": "/props"
+        },
+        "n_ctx": {
+          "value": 4096,
+          "source": "/props"
+        },
+        "total_slots": {
+          "value": 1,
+          "source": "/props"
+        }
+      },
       "fidelity": {
         "context": "measured",
         "kv_tokens": "measured",
@@ -36,7 +74,17 @@
       "decode_tps": null,
       "prefill_tps": null,
       "unloads_at": null,
-      "config": null,
+      "config": {
+        "args": {
+          "value": [
+            "llama",
+            "serve",
+            "--port",
+            "41002"
+          ],
+          "source": "/v1/models"
+        }
+      },
       "fidelity": {}
     },
     {
@@ -53,7 +101,17 @@
       "decode_tps": null,
       "prefill_tps": null,
       "unloads_at": null,
-      "config": null,
+      "config": {
+        "args": {
+          "value": [
+            "llama",
+            "serve",
+            "--port",
+            "41003"
+          ],
+          "source": "/v1/models"
+        }
+      },
       "fidelity": {}
     }
   ]
