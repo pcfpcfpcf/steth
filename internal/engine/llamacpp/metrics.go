@@ -1,14 +1,12 @@
 package llamacpp
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/fetch"
+	"github.com/pcfpcfpcf/steth/internal/engine/prom"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
@@ -72,22 +70,18 @@ func rate(tokens, seconds float64) *float64 {
 	return &r
 }
 
-// parseMetrics reads the unlabelled llamacpp: samples of a Prometheus text
-// body, by name without the prefix.
+// parseMetrics reads the unlabelled llamacpp: samples of a metrics body,
+// by name without the prefix.
 func parseMetrics(body []byte) (map[string]float64, error) {
-	values := map[string]float64{}
-	lines := bufio.NewScanner(bytes.NewReader(body))
-	for lines.Scan() {
-		line := strings.TrimSpace(lines.Text())
-		name, value, found := strings.Cut(line, " ")
-		if !found || !strings.HasPrefix(name, metricPrefix) || strings.Contains(name, "{") {
-			continue
-		}
-		v, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
-		if err != nil {
-			return nil, fmt.Errorf("metric %s: expected a number, got %q", name, value)
-		}
-		values[strings.TrimPrefix(name, metricPrefix)] = v
+	samples, err := prom.Parse(body)
+	if err != nil {
+		return nil, err
 	}
-	return values, lines.Err()
+	values := map[string]float64{}
+	for _, s := range samples {
+		if strings.HasPrefix(s.Name, metricPrefix) && len(s.Labels) == 0 {
+			values[strings.TrimPrefix(s.Name, metricPrefix)] = s.Value
+		}
+	}
+	return values, nil
 }
