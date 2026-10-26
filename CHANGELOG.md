@@ -12,8 +12,9 @@ First version. One page for the inference engines on a box.
   a running server.
 - Finds the engines on its machine by their processes and default ports;
   `--target ENGINE=URL` adds others.
-- Reads the machine on Linux: each memory pool's size and use, and what
-  local llama.cpp and vLLM processes hold.
+- Reads the machine: each memory pool's size and use, and what local
+  llama.cpp and vLLM processes hold. Linux is checked; macOS and Windows are
+  built and their parsers tested.
 - Per model: memory in each pool, KV cache held and its size, state,
   requests running and waiting, decode and prefill speed with two minutes of
   history, unload time, and settings as the engine reports them; every

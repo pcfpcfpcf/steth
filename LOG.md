@@ -4,6 +4,18 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **macOS and Windows read the box too,** unverified on those systems.
+  macOS runs `lsof -F pn` (sockets of this user's processes, or everyone's
+  as root), `ps` for command lines, parents and memory, and `sysctl` and
+  `vm_stat` (active + wired + compressed pages, as Activity Monitor counts
+  memory used). Windows calls the API through `syscall` (host memory, each
+  process's working set, the process table: fast enough to run every poll),
+  `netstat -ano` for listeners with their PIDs, and PowerShell for command
+  lines, which takes most of a second and so runs only at discovery. A
+  netstat listener is known by its all-zero foreign address, since the state
+  word is translated. The parsers are tested here against outputs in each
+  tool's documented format; the tests that read the machine itself run in
+  CI on Linux, macOS and Windows once the repository is pushed.
 - **Router mode checked live** (`--models-dir`, `--no-models-autoload`).
   `/props` says `role: router`; `/v1/models` lists each model with a status
   and the command line its server runs with. A model not loaded lists
