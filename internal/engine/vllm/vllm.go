@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/fetch"
+	"github.com/pcfpcfpcf/steth/internal/engine/local"
 	"github.com/pcfpcfpcf/steth/internal/engine/prom"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
@@ -30,6 +31,7 @@ type Source struct {
 	client   *http.Client
 	now      func() time.Time
 	last     map[string]totals
+	local    *local.Finder
 }
 
 // totals are a model's token counters when they were read.
@@ -39,7 +41,7 @@ type totals struct {
 }
 
 func New(endpoint string, client *http.Client) *Source {
-	return &Source{endpoint: endpoint, client: client, now: time.Now, last: map[string]totals{}}
+	return &Source{endpoint: endpoint, client: client, now: time.Now, last: map[string]totals{}, local: local.NewFinder(Runs)}
 }
 
 func (s *Source) Engine() string   { return Engine }
@@ -84,8 +86,34 @@ func (s *Source) Read(ctx context.Context) (state.Reading, error) {
 		m.Config["root"] = state.Setting{Value: card.Root, Source: "/v1/models"}
 		reading.Models = append(reading.Models, m)
 	}
+	if len(reading.Models) > 0 {
+		if err := s.readProcess(ctx, &reading.Models[0]); err != nil {
+			return state.Reading{}, err
+		}
+	}
 	s.last = next
 	return reading, nil
+}
+
+// readProcess fills the served model from the server's processes, where they
+// can be seen: what they hold in each pool, the engine core that holds the
+// weights and cache included, and the command line.
+func (s *Source) readProcess(ctx context.Context, m *state.Model) error {
+	proc := s.local.At(local.Port(s.endpoint))
+	if proc == nil {
+		return nil
+	}
+	held, err := s.local.Processes.Memory(ctx, proc.PID)
+	if err != nil {
+		return err
+	}
+	m.Pools = map[string]state.Holding{}
+	for pool, bytes := range held {
+		m.Pools[pool] = state.Holding{WeightBytes: bytes}
+	}
+	m.Fidelity["pools"] = state.Measured
+	m.Config["launch args"] = state.Setting{Value: proc.Args, Source: "launch args"}
+	return nil
 }
 
 // toModel reads the metrics labelled with `name`, and the cache settings,

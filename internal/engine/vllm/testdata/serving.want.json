@@ -10,7 +10,16 @@
       "kv_tokens": 8192,
       "context": 65536,
       "max_context": null,
-      "pools": null,
+      "pools": {
+        "dram": {
+          "weight_bytes": 3221225472,
+          "kv_bytes_per_token": null
+        },
+        "vram": {
+          "weight_bytes": 22548578304,
+          "kv_bytes_per_token": null
+        }
+      },
       "running": 3,
       "decode_tps": 150,
       "prefill_tps": null,
@@ -36,6 +45,17 @@
           "value": "65536",
           "source": "/metrics"
         },
+        "launch args": {
+          "value": [
+            "/usr/bin/python3",
+            "/usr/local/bin/vllm",
+            "serve",
+            "Qwen/Qwen3-8B",
+            "--gpu-memory-utilization",
+            "0.9"
+          ],
+          "source": "launch args"
+        },
         "max_model_len": {
           "value": 32768,
           "source": "/v1/models"
@@ -53,6 +73,7 @@
         "context": "measured",
         "decode_tps": "derived",
         "kv_tokens": "derived",
+        "pools": "measured",
         "queued": "measured",
         "running": "measured"
       },

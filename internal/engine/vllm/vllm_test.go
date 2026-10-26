@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/enginetest"
+	"github.com/pcfpcfpcf/steth/internal/engine/local"
 )
 
 var start = time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
@@ -17,6 +18,11 @@ func TestTwoReadsASecondApart(t *testing.T) {
 		"/metrics":   "testdata/metrics.1.txt",
 	})
 	source := New(server.URL, server.Client())
+	source.local.Processes = enginetest.Processes{local.Port(server.URL): {
+		PID:  5150,
+		Args: "/usr/bin/python3 /usr/local/bin/vllm serve Qwen/Qwen3-8B --gpu-memory-utilization 0.9",
+		Held: map[string]uint64{"vram": 21 << 30, "dram": 3 << 30},
+	}}
 	clock := start
 	source.now = func() time.Time { return clock }
 	first, err := source.Read(context.Background())
@@ -40,7 +46,9 @@ func TestSleeping(t *testing.T) {
 		"/v1/models": "testdata/models.json",
 		"/metrics":   "testdata/sleeping.txt",
 	})
-	reading, err := New(server.URL, server.Client()).Read(context.Background())
+	source := New(server.URL, server.Client())
+	source.local.Processes = enginetest.Processes{}
+	reading, err := source.Read(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +59,9 @@ func TestSleeping(t *testing.T) {
 
 func TestReadFailsWithoutMetrics(t *testing.T) {
 	server := enginetest.Serve(t, map[string]string{"/v1/models": "testdata/models.json"})
-	if _, err := New(server.URL, server.Client()).Read(context.Background()); err == nil {
+	source := New(server.URL, server.Client())
+	source.local.Processes = enginetest.Processes{}
+	if _, err := source.Read(context.Background()); err == nil {
 		t.Error("expected an error without /metrics")
 	}
 }
