@@ -75,6 +75,6 @@ type Source struct {
 // Reading is what one engine says: the pools it knows and its models, with
 // Engine and Endpoint left for the collector to fill.
 type Reading struct {
-	Pools  []Pool
-	Models []Model
+	Pools  []Pool  `json:"pools"`
+	Models []Model `json:"models"`
 }
