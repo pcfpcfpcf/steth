@@ -301,6 +301,10 @@ const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
 /* A model is known by its engine's endpoint and its name. It keeps its
    colour while it stays loaded; a colour given up goes to the next model. */
 const keyOf = (m) => `${m.endpoint} ${m.id}`;
+/* A model's name to show: an id that is a file path, as llama.cpp gives one
+   started without --alias, shows as its file; the full id is in the row's
+   tooltip. */
+const nameOf = (m) => (m.id.startsWith("/") ? m.id.slice(m.id.lastIndexOf("/") + 1) : m.id);
 const colors = new Map();
 const colorOf = (m) => colors.get(keyOf(m));
 const findModel = (status, key) => status.models.find((m) => keyOf(m) === key);
@@ -505,9 +509,9 @@ function drawPools(status) {
       el.classList.toggle("moving", m.state === "moving");
       el.classList.toggle("serving", m.state === "serving");
       el.classList.toggle("selected", selected.model === keyOf(m));
-      el.setAttribute("aria-label", `${m.id}: ${gb(whole(h))} in ${poolInfo(pool.name).label}`);
+      el.setAttribute("aria-label", `${nameOf(m)}: ${gb(whole(h))} in ${poolInfo(pool.name).label}`);
       const label = el.querySelector(".label");
-      label.querySelector("b").textContent = m.id;
+      label.querySelector("b").textContent = nameOf(m);
       label.querySelector("span").textContent = gb(whole(h));
       label.style.opacity = r.w * side >= LABEL_MIN_PX.width && r.h * side >= LABEL_MIN_PX.height ? 1 : 0;
 
@@ -566,7 +570,7 @@ function drawModels(status) {
   for (const m of status.models) {
     const el = rowFor(m);
     el.classList.toggle("selected", selected.model === keyOf(m));
-    el.querySelector(".model-name .id").textContent = m.id;
+    el.querySelector(".model-name .id").textContent = nameOf(m);
     el.querySelector(".model-name .engine").textContent = m.engine;
     el.querySelector(".model-name").title = `${m.id} on ${m.engine} at ${m.endpoint}`;
     el.querySelector(".state").outerHTML = stateBadge(m);
@@ -655,7 +659,7 @@ $("panel").addEventListener("mousemove", (event) => {
 $("panel").addEventListener("mouseout", (event) => { if (event.target.closest?.(".spark")) hideTip(); });
 
 function drawSummary(status) {
-  const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
+  const serving = status.models.filter((m) => m.state === "serving").map(nameOf);
   const moving = status.models.filter((m) => m.state === "moving").length;
   const queued = sum(status.models, (m) => m.queued ?? 0);
   const parts = [`${status.models.length} model${status.models.length === 1 ? "" : "s"} on this box`];
@@ -686,9 +690,9 @@ function modelDetails(status, key) {
   const reserved = perToken == null || m.context == null ? null : perToken * m.context;
   const pools = status.pools.map((p) => ({ name: p.name, h: holding(m, p.name) }));
   return `
-    <div class="panel-head"><h3><i class="swatch" style="--c:${c}"></i>${escape(m.id)}</h3>
+    <div class="panel-head"><h3><i class="swatch" style="--c:${c}"></i>${escape(nameOf(m))}</h3>
     <button class="close" aria-label="Close">×</button></div>
-    <div class="note">${escape(m.engine)} at ${escape(m.endpoint)}</div>
+    <div class="note">${nameOf(m) === m.id ? "" : `${escape(m.id)}<br>`}${escape(m.engine)} at ${escape(m.endpoint)}</div>
     ${stateBadge(m)}
     ${m.kv_tokens != null ? `
     <div class="big"><b>${count(m.kv_tokens)}</b><span>of ${m.context == null ? "–" : count(m.context)} tokens in its KV cache</span></div>
@@ -753,7 +757,7 @@ function poolDetails(status, name) {
     <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
     ${status.models.map((m) => {
       const h = holding(m, name);
-      return `<tr><td><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
+      return `<tr><td><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(nameOf(m))}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
     }).join("")}
     </tbody></table>`;
 }
@@ -784,7 +788,7 @@ function showTip(event, pool, key) {
         <div class="more">Click for the whole pool</div>`;
   } else {
     const h = holding(m, pool);
-    tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
+    tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(nameOf(m))}</b>
       <div class="row"><span>${poolInfo(pool).label}, ${h.cache == null ? "held" : "weights"}</span><span>${gb(h.weights)}</span></div>
       <div class="row"><span>KV reserved</span><span>${size(h.cache)}</span></div>
       <div class="row"><span>KV in use</span><span>${size(h.held)}</span></div>
