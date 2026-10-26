@@ -41,9 +41,9 @@ on another machine; repeat it for more. `-discover=false` reads only those.
 steth also reads the machine itself: each pool's size and how much of it is
 in use, and, for llama.cpp and vLLM servers it can see, what their processes
 hold and how they were launched. On Linux from `/proc` and `nvidia-smi`
-(checked); on macOS from `lsof`, `ps`, `sysctl` and `vm_stat`, and on
-Windows from the Windows API, `netstat` and PowerShell (both built and
-their parsers tested, but not yet run on those systems).
+; on macOS from `lsof`, `ps`, `sysctl` and `vm_stat`; on Windows from the
+Windows API, `netstat` and PowerShell. CI runs the tests that read the
+machine on all three.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).

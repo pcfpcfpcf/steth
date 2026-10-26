@@ -4,6 +4,13 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **macOS and Windows checked in CI** (run 40380470607): the tests that read
+  the machine passed on both. Each found its own listening socket with its
+  pid (`lsof`, `netstat`), its own memory, command line (`ps`, PowerShell)
+  and parent, and host memory. Windows first failed on line endings: its
+  checkout turned the recorded fixtures to CRLF, so `.gitattributes` keeps
+  `testdata` byte for byte. Not checked there: discovering a real engine,
+  and nvidia-smi.
 - **macOS and Windows read the box too,** unverified on those systems.
   macOS runs `lsof -F pn` (sockets of this user's processes, or everyone's
   as root), `ps` for command lines, parents and memory, and `sysctl` and

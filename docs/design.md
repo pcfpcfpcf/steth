@@ -59,9 +59,8 @@ first, so the machine's own figures win.
 All seven are built. geode, Ollama and llama.cpp (two slots, with and
 without `--metrics`, idle sleep, router mode) are checked live. Owed: a live
 check of vLLM, written from its source (needs a GPU of compute capability
-7.0 or more); a run of the box on macOS and Windows, built and
-parser-tested here, which CI does once pushed; geode reporting its own
-speeds.
+7.0 or more); discovering a real engine on macOS and Windows, whose box
+reading CI checks; geode reporting its own speeds.
 
 1. Skeleton, schema, collector, geode adapter, page ported.
 2. Ollama adapter.
