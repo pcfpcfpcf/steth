@@ -8,8 +8,8 @@ First version. One page for the inference engines on a box.
 
 - Engines: geode (`/v1/pool`), Ollama (`/api/ps`), llama.cpp `llama serve`
   (`/props`, `/slots`, `/metrics`, router mode) and vLLM (`/v1/models`,
-  `/metrics`). llama.cpp and vLLM are written from their source and not yet
-  checked against running servers.
+  `/metrics`). vLLM is written from its source and not yet checked against
+  a running server.
 - Finds the engines on its machine by their processes and default ports;
   `--target ENGINE=URL` adds others.
 - Reads the machine on Linux: each memory pool's size and use, and what

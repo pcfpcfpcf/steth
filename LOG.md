@@ -4,6 +4,14 @@ Decisions as they are made, newest first.
 
 ## 2026-10-26
 
+- **Router mode checked live** (`--models-dir`, `--no-models-autoload`).
+  `/props` says `role: router`; `/v1/models` lists each model with a status
+  and the command line its server runs with. A model not loaded lists
+  `--port 0`; once loaded, its real port, so the adapter finds the child
+  process by it. steth read the loaded model through `?model=` with its
+  child's memory, left the unloaded ones out, and discovery skipped the
+  child's own port. Sleeping and loading states were not seen here; their
+  fixture stays written from source.
 - **Sleep handling checked live** (`--sleep-idle-seconds 5`, no
   `--metrics`). Polling `/slots` every second kept the server awake for 12 s;
   it slept within 7 s of stopping. steth, which skips `/slots` for a server

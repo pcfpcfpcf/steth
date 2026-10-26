@@ -56,10 +56,11 @@ first, so the machine's own figures win.
 
 ## Stages
 
-All seven are built. Owed: a live check of llama.cpp (`llama serve` with two
-slots, with and without `--metrics`) and of vLLM (needs a GPU of compute
-capability 7.0 or more), whose adapters are written from their source;
-reading the box on macOS and Windows; geode reporting its own speeds.
+All seven are built. geode, Ollama and llama.cpp (two slots, with and
+without `--metrics`, idle sleep, router mode) are checked live. Owed: a live
+check of vLLM, written from its source (needs a GPU of compute capability
+7.0 or more); reading the box on macOS and Windows; geode reporting its own
+speeds.
 
 1. Skeleton, schema, collector, geode adapter, page ported.
 2. Ollama adapter.
