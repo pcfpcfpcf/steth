@@ -46,6 +46,10 @@ launched. Other systems are not read yet.
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
 
+To work on the page without running an engine, `cmd/mockengine` answers as
+one from recorded responses (each adapter's `testdata/`); its doc comment
+shows how.
+
 ## Release
 
 Add a `## vX.Y.Z` section to [CHANGELOG.md](CHANGELOG.md), then push the tag
