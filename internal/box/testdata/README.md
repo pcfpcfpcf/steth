@@ -5,3 +5,5 @@ format as `nvidia-smi --query-compute-apps=pid,used_memory` and
 
 `lsof.txt` and `vm_stat.txt` are not recorded: they are written in the
 formats `lsof -F pn` and macOS's `vm_stat` print, for the macOS parsers.
+`netstat.txt` is written in the format of Windows' `netstat -ano`, with one
+state in another language, for the Windows parser.

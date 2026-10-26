@@ -38,10 +38,12 @@ such as a system service, the engines' default ports. It looks again every
 on another machine; repeat it for more. `-discover=false` reads only those.
 `--listen ADDR` moves the page.
 
-On Linux steth also reads the machine itself: each pool's size and how much
-of it is in use, from `/proc/meminfo` and `nvidia-smi`, and, for llama.cpp
-and vLLM servers it can see, what their processes hold and how they were
-launched. Other systems are not read yet.
+steth also reads the machine itself: each pool's size and how much of it is
+in use, and, for llama.cpp and vLLM servers it can see, what their processes
+hold and how they were launched. On Linux from `/proc` and `nvidia-smi`
+(checked); on macOS from `lsof`, `ps`, `sysctl` and `vm_stat`, and on
+Windows from the Windows API, `netstat` and PowerShell (both built and
+their parsers tested, but not yet run on those systems).
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
