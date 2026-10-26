@@ -46,11 +46,19 @@ launched. Other systems are not read yet.
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
 
+## Release
+
+Add a `## vX.Y.Z` section to [CHANGELOG.md](CHANGELOG.md), then push the tag
+`vX.Y.Z`: CI builds Linux, macOS and Windows binaries for amd64 and arm64
+and publishes them with that section as the notes. `scripts/release.sh
+vX.Y.Z` builds the same archives into `dist/` locally.
+
 ## Docs
 
 - [docs/design.md](docs/design.md): what it is for, the components and the stages.
 - [docs/schema.md](docs/schema.md): the state every engine is read into.
 - [LOG.md](LOG.md): decisions as they were made.
+- [CHANGELOG.md](CHANGELOG.md): what each version changed.
 - [STYLE.md](STYLE.md): how the code is written.
 
 ## License
