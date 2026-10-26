@@ -194,6 +194,10 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-nu
 th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--grid); }
 td { padding: 9px 0; border-bottom: 1px solid var(--grid); }
 th:not(:first-child), td:not(:first-child) { text-align: right; }
+table.config td { word-break: break-word; vertical-align: top; }
+table.config td:nth-child(2) { text-align: left; padding-left: 12px; }
+table.config th:nth-child(2) { text-align: left; padding-left: 12px; }
+table.config td:last-child, table.config th:last-child { color: var(--muted); white-space: nowrap; padding-left: 12px; }
 td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
 
 .tip {
@@ -692,6 +696,18 @@ function modelDetails(status, key) {
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
     ${pools.map(({ name, h }) => `<tr><td>${poolInfo(name).label}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${size(h.held)}</td></tr>`).join("")}
     <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${size(total(pools, (p) => p.h.cache))}</b></td><td><b>${size(total(pools, (p) => p.h.held))}</b></td></tr>
+    </tbody></table>
+    ${configTable(m)}`;
+}
+
+/* How the engine runs the model, read-only, under the engine's own names. */
+function configTable(m) {
+  const names = Object.keys(m.config || {}).sort();
+  if (names.length === 0) return `<h4>Config</h4><div class="note">${escape(m.engine)} does not report its settings</div>`;
+  const shown = (value) => (Array.isArray(value) ? value.join(" ") : String(value));
+  return `<h4>Config</h4>
+    <table class="config"><thead><tr><th>Setting</th><th>Value</th><th>From</th></tr></thead><tbody>
+    ${names.map((name) => `<tr><td>${escape(name)}</td><td>${escape(shown(m.config[name].value))}</td><td>${escape(m.config[name].source)}</td></tr>`).join("")}
     </tbody></table>`;
 }
 
