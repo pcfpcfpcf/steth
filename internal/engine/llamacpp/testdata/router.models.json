@@ -1,0 +1,13 @@
+{
+  "data": [
+    {"id": "qwen3.5-0.8b", "aliases": [], "tags": [], "object": "model", "owned_by": "llamacpp", "created": 1793030000,
+     "status": {"value": "loaded", "args": ["llama", "serve", "--port", "41001"]}, "architecture": {}, "source": "models_dir", "can_remove": false, "context_length": 262144},
+    {"id": "gemma3-1b", "aliases": [], "tags": [], "object": "model", "owned_by": "llamacpp", "created": 1793030000,
+     "status": {"value": "sleeping", "args": ["llama", "serve", "--port", "41002"]}, "architecture": {}, "source": "models_dir", "can_remove": false, "context_length": 32768},
+    {"id": "qwen3-8b", "aliases": [], "tags": [], "object": "model", "owned_by": "llamacpp", "created": 1793030000,
+     "status": {"value": "loading", "args": ["llama", "serve", "--port", "41003"]}, "architecture": {}, "source": "models_dir", "can_remove": false},
+    {"id": "llama3.2-1b", "aliases": [], "tags": [], "object": "model", "owned_by": "llamacpp", "created": 1793030000,
+     "status": {"value": "unloaded", "args": []}, "architecture": {}, "source": "models_dir", "can_remove": false, "context_length": 131072}
+  ],
+  "object": "list"
+}

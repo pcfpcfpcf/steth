@@ -1,0 +1,20 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "Qwen3.5-0.8B-Q8_0",
+      "engine": "",
+      "endpoint": "",
+      "state": "serving",
+      "queued": null,
+      "kv_tokens": 1836,
+      "context": 8192,
+      "max_context": null,
+      "pools": null,
+      "fidelity": {
+        "context": "measured",
+        "kv_tokens": "measured"
+      }
+    }
+  ]
+}

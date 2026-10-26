@@ -1,0 +1,44 @@
+{
+  "pools": null,
+  "models": [
+    {
+      "id": "qwen3.5-0.8b",
+      "engine": "",
+      "endpoint": "",
+      "state": "idle",
+      "queued": null,
+      "kv_tokens": 800,
+      "context": 4096,
+      "max_context": null,
+      "pools": null,
+      "fidelity": {
+        "context": "measured",
+        "kv_tokens": "measured"
+      }
+    },
+    {
+      "id": "gemma3-1b",
+      "engine": "",
+      "endpoint": "",
+      "state": "sleeping",
+      "queued": null,
+      "kv_tokens": null,
+      "context": null,
+      "max_context": null,
+      "pools": null,
+      "fidelity": {}
+    },
+    {
+      "id": "qwen3-8b",
+      "engine": "",
+      "endpoint": "",
+      "state": "moving",
+      "queued": null,
+      "kv_tokens": null,
+      "context": null,
+      "max_context": null,
+      "pools": null,
+      "fidelity": {}
+    }
+  ]
+}
