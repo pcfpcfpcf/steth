@@ -58,10 +58,12 @@ type Model struct {
 }
 
 // Holding is what a model holds in one pool: its weights and buffers, and
-// what each token of context reserves for its KV cache.
+// what each token of context reserves for its KV cache. KVBytesPerToken is
+// nil where the engine does not split the cache from the rest, which
+// WeightBytes then includes.
 type Holding struct {
-	WeightBytes     uint64  `json:"weight_bytes"`
-	KVBytesPerToken float64 `json:"kv_bytes_per_token"`
+	WeightBytes     uint64   `json:"weight_bytes"`
+	KVBytesPerToken *float64 `json:"kv_bytes_per_token"`
 }
 
 // Source is one engine endpoint and whether its last read succeeded.

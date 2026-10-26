@@ -79,7 +79,7 @@ func (s *Source) Read(ctx context.Context) (state.Reading, error) {
 func toModel(m wireModel) state.Model {
 	pools := make(map[string]state.Holding, len(m.Pools))
 	for name, h := range m.Pools {
-		pools[name] = state.Holding{WeightBytes: h.Bytes, KVBytesPerToken: h.BytesPerToken}
+		pools[name] = state.Holding{WeightBytes: h.Bytes, KVBytesPerToken: &h.BytesPerToken}
 	}
 	return state.Model{
 		ID:         m.ID,

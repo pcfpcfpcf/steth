@@ -335,15 +335,21 @@ function tween(el, to, format) {
 }
 
 /* ---- what one model holds in one pool ---- */
+/* The KV cache reserved is null where the engine does not split it from the
+   rest (then `weights` holds it too), and in use null where the engine does
+   not say how many tokens it holds. */
 function holding(model, pool) {
-  const at = model.pools[pool] || { weight_bytes: 0, kv_bytes_per_token: 0 };
-  return {
-    weights: at.weight_bytes,
-    cache: at.kv_bytes_per_token * model.context,
-    held: at.kv_bytes_per_token * Math.min(model.kv_tokens, model.context),
-  };
+  const at = model.pools?.[pool] || { weight_bytes: 0, kv_bytes_per_token: 0 };
+  const perToken = at.kv_bytes_per_token;
+  const cache = perToken == null || model.context == null ? null : perToken * model.context;
+  const held = cache == null || model.kv_tokens == null ? null
+    : perToken * Math.min(model.kv_tokens, model.context);
+  return { weights: at.weight_bytes, cache, held };
 }
-const whole = (h) => h.weights + h.cache;
+const whole = (h) => h.weights + (h.cache ?? 0);
+/* A sum that is unknown when any part is. */
+const total = (list, f) => (list.some((x) => f(x) == null) ? null : sum(list, f));
+const size = (bytes) => (bytes == null ? "–" : gb(bytes));
 
 /* What a pool is drawn at: its capacity, or where no size is known -- a
    drive holds whatever it is given -- what is in it. */
@@ -484,11 +490,11 @@ function drawPools(status) {
       label.style.opacity = r.w * side >= LABEL_MIN_PX.width && r.h * side >= LABEL_MIN_PX.height ? 1 : 0;
 
       const kv = el.querySelector(".kv");
-      const share = whole(h) > 0 ? h.cache / whole(h) : 0;
+      const share = whole(h) > 0 ? (h.cache ?? 0) / whole(h) : 0;
       const box = kvBox(r, share);
       kv.style.width = `${box.w * 100}%`;
       kv.style.height = `${box.h * 100}%`;
-      kv.firstElementChild.style.height = `${h.cache > 0 ? (h.held / h.cache) * 100 : 0}%`;
+      kv.firstElementChild.style.height = `${h.cache > 0 ? ((h.held ?? 0) / h.cache) * 100 : 0}%`;
       const fits = box.w * r.w * side >= KV_LABEL_MIN_PX.width && box.h * r.h * side >= KV_LABEL_MIN_PX.height;
       kv.lastElementChild.textContent = fits ? `KV ${short(m.kv_tokens)}/${short(m.context)}` : "";
     }
@@ -584,7 +590,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel
 
 function modelDetails(status, key) {
   const m = findModel(status, key), c = series(colorOf(m));
-  const perToken = sum(Object.values(m.pools), (p) => p.kv_bytes_per_token);
+  const perToken = total(Object.values(m.pools || {}), (p) => p.kv_bytes_per_token);
+  const reserved = perToken == null || m.context == null ? null : perToken * m.context;
   const pools = status.pools.map((p) => ({ name: p.name, h: holding(m, p.name) }));
   return `
     <div class="panel-head"><h3><i class="swatch" style="--c:${c}"></i>${escape(m.id)}</h3>
@@ -597,14 +604,14 @@ function modelDetails(status, key) {
       ? `Can grow to ${count(m.max_context)} tokens`
       : "Sized for the longest context it can hold"}</div>
     <div class="facts">
-      <div><small>KV reserved</small><span>${gb(perToken * m.context)}</span></div>
-      <div><small>KV per token</small><span>${gb(perToken)}</span></div>
+      <div><small>KV reserved</small><span>${size(reserved)}</span></div>
+      <div><small>KV per token</small><span>${size(perToken)}</span></div>
       <div><small>Rate</small><span>${rateText(rates.get(key), "–")}</span></div>
     </div>
     <h4>Where it is held</h4>
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
-    ${pools.map(({ name, h }) => `<tr><td>${poolInfo(name).label}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${gb(h.held)}</td></tr>`).join("")}
-    <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${gb(sum(pools, (p) => p.h.cache))}</b></td><td><b>${gb(sum(pools, (p) => p.h.held))}</b></td></tr>
+    ${pools.map(({ name, h }) => `<tr><td>${poolInfo(name).label}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${size(h.held)}</td></tr>`).join("")}
+    <tr><td><b>Total</b></td><td><b>${gb(sum(pools, (p) => p.h.weights))}</b></td><td><b>${size(total(pools, (p) => p.h.cache))}</b></td><td><b>${size(total(pools, (p) => p.h.held))}</b></td></tr>
     </tbody></table>`;
 }
 
@@ -628,7 +635,7 @@ function poolDetails(status, name) {
     <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
     ${status.models.map((m) => {
       const h = holding(m, name);
-      return `<tr><td><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${gb(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
+      return `<tr><td><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</td><td>${gb(h.weights)}</td><td>${size(h.cache)}</td><td>${Math.round(share(whole(h)) * 100)}%</td></tr>`;
     }).join("")}
     </tbody></table>`;
 }
@@ -657,8 +664,8 @@ function showTip(event, pool, key) {
     const h = holding(m, pool);
     tip.innerHTML = `<b><i class="swatch" style="--c:${series(colorOf(m))}"></i>${escape(m.id)}</b>
       <div class="row"><span>${poolInfo(pool).label}, weights</span><span>${gb(h.weights)}</span></div>
-      <div class="row"><span>KV reserved</span><span>${gb(h.cache)}</span></div>
-      <div class="row"><span>KV in use</span><span>${gb(h.held)}</span></div>
+      <div class="row"><span>KV reserved</span><span>${size(h.cache)}</span></div>
+      <div class="row"><span>KV in use</span><span>${size(h.held)}</span></div>
       <div class="row"><span>Engine</span><span>${escape(m.engine)}</span></div>
       <div class="row"><span>Context</span><span>${count(m.kv_tokens)} / ${count(m.context)}</span></div>
       <div class="more">Click for details</div>`;

@@ -65,7 +65,7 @@ known (`id`, `engine`, `endpoint`, `state`).
 | `kv_tokens` | integer or null | tokens its KV cache holds now |
 | `context` | integer or null | tokens its KV cache is sized for now |
 | `max_context` | integer or null | the most tokens it can grow to |
-| `pools` | object or null | per pool name: `weight_bytes`, what it holds there besides its KV cache, and `kv_bytes_per_token`, what each token of context reserves there. The KV cache reserved in a pool is `kv_bytes_per_token × context`; in use, `kv_bytes_per_token × min(kv_tokens, context)` |
+| `pools` | object or null | per pool name: `weight_bytes`, what it holds there besides its KV cache, and `kv_bytes_per_token`, what each token of context reserves there. The KV cache reserved in a pool is `kv_bytes_per_token × context`; in use, `kv_bytes_per_token × min(kv_tokens, context)`. `kv_bytes_per_token` is null where the engine does not split its KV cache from the rest; `weight_bytes` then includes it |
 | `fidelity` | object | field name → `"measured"` or `"derived"` |
 
 ## sources[]
