@@ -77,7 +77,7 @@ func main() {
 
 	// The box first: the pool sizes it measures take precedence over an
 	// engine's own view of them.
-	c := collector.New(append([]collector.Source{box.Source{}}, sources...), readTimeout)
+	c := collector.New(collector.Fixed(append([]collector.Source{box.Source{}}, sources...)...), readTimeout)
 	go c.Run(ctx, pollInterval)
 
 	server := &http.Server{Addr: *listen, Handler: web.Handler(c.State)}

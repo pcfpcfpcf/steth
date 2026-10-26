@@ -39,7 +39,7 @@ func TestPollMergesSources(t *testing.T) {
 		Models: []state.Model{{ID: "m2", State: state.Serving}},
 	}}
 	broken := &fake{engine: "c", err: errors.New("connection refused")}
-	c := New([]Source{a, b, broken}, time.Second)
+	c := New(Fixed(a, b, broken), time.Second)
 	c.Poll(context.Background())
 	s := c.State()
 
@@ -71,7 +71,7 @@ func TestPollMergesSources(t *testing.T) {
 }
 
 func TestSourcesAreUnreadBeforeFirstPoll(t *testing.T) {
-	c := New([]Source{&fake{engine: "a"}}, time.Second)
+	c := New(Fixed(&fake{engine: "a"}), time.Second)
 	if s := c.State(); s.Sources[0].OK || s.Models == nil {
 		t.Errorf("before a poll: %+v", s)
 	}
@@ -79,7 +79,7 @@ func TestSourcesAreUnreadBeforeFirstPoll(t *testing.T) {
 
 func TestSlowSourceTimesOut(t *testing.T) {
 	slow := &fake{engine: "slow", delay: time.Hour}
-	c := New([]Source{slow}, 10*time.Millisecond)
+	c := New(Fixed(slow), 10*time.Millisecond)
 	c.Poll(context.Background())
 	if c.State().Sources[0].OK {
 		t.Error("a source that never answers reads as ok")
@@ -88,7 +88,7 @@ func TestSlowSourceTimesOut(t *testing.T) {
 
 func TestRunPollsUntilCancelled(t *testing.T) {
 	a := &fake{engine: "a", reading: state.Reading{Models: []state.Model{{ID: "m"}}}}
-	c := New([]Source{a}, time.Second)
+	c := New(Fixed(a), time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { c.Run(ctx, time.Millisecond); close(done) }()
@@ -109,7 +109,7 @@ func TestHistoryKeepsTheWindowAndForgetsModelsGone(t *testing.T) {
 	fast := state.Model{ID: "fast", DecodeTPS: speed(30)}
 	quiet := state.Model{ID: "quiet"}
 	a := &fake{engine: "a", reading: state.Reading{Models: []state.Model{fast, quiet}}}
-	c := New([]Source{a}, time.Second)
+	c := New(Fixed(a), time.Second)
 	clock := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 	c.now = func() time.Time { return clock }
 	for i := 0; i < 3; i++ {

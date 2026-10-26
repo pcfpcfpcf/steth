@@ -29,7 +29,7 @@ const (
 )
 
 type Collector struct {
-	sources []Source
+	sources func() []Source
 	timeout time.Duration
 	now     func() time.Time
 	current atomic.Pointer[state.State]
@@ -38,15 +38,22 @@ type Collector struct {
 	history map[string][]state.Sample
 }
 
-// New makes a collector that gives each source `timeout` to answer a poll.
-func New(sources []Source, timeout time.Duration) *Collector {
+// New makes a collector that reads, at each poll, the sources `sources`
+// returns then, giving each `timeout` to answer.
+func New(sources func() []Source, timeout time.Duration) *Collector {
 	c := &Collector{sources: sources, timeout: timeout, now: time.Now, history: map[string][]state.Sample{}}
-	unread := make([]result, len(sources))
+	list := sources()
+	unread := make([]result, len(list))
 	for i := range unread {
 		unread[i].err = errNotRead
 	}
-	c.current.Store(merge(sources, unread))
+	c.current.Store(merge(list, unread))
 	return c
+}
+
+// Fixed is a source list that never changes.
+func Fixed(sources ...Source) func() []Source {
+	return func() []Source { return sources }
 }
 
 // State is the box as of the last poll.
@@ -78,9 +85,10 @@ type result struct {
 func (c *Collector) Poll(parent context.Context) {
 	ctx, cancel := context.WithTimeout(parent, c.timeout)
 	defer cancel()
-	results := make([]result, len(c.sources))
+	sources := c.sources()
+	results := make([]result, len(sources))
 	var wg sync.WaitGroup
-	for i, source := range c.sources {
+	for i, source := range sources {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -92,7 +100,7 @@ func (c *Collector) Poll(parent context.Context) {
 	if parent.Err() != nil {
 		return
 	}
-	s := merge(c.sources, results)
+	s := merge(sources, results)
 	c.record(s.Models)
 	c.current.Store(s)
 }
