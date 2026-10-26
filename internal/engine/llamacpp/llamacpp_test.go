@@ -2,7 +2,6 @@ package llamacpp
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,36 +12,9 @@ import (
 
 const child = "?autoload=false&model=qwen3.5-0.8b"
 
-// fakeProcesses is a fake process table: the server listening on each port.
-type fakeProcesses map[int]struct {
-	pid  int
-	args string
-	held map[string]uint64
-}
-
-func (p fakeProcesses) PIDAt(port int) int { return p[port].pid }
-
-func (p fakeProcesses) Cmdline(pid int) ([]string, error) {
-	for _, proc := range p {
-		if proc.pid == pid {
-			return strings.Fields(proc.args), nil
-		}
-	}
-	return nil, errors.New("no such process")
-}
-
-func (p fakeProcesses) Memory(_ context.Context, pid int) (map[string]uint64, error) {
-	for _, proc := range p {
-		if proc.pid == pid {
-			return proc.held, nil
-		}
-	}
-	return nil, errors.New("no such process")
-}
-
 // newSource reads `url` with `procs` as the machine's processes; nil is a
 // machine where none can be seen.
-func newSource(url string, client *http.Client, procs fakeProcesses) *Source {
+func newSource(url string, client *http.Client, procs enginetest.Processes) *Source {
 	s := New(url, client)
 	s.local.Processes = procs
 	return s
@@ -110,10 +82,10 @@ func TestVisibleProcess(t *testing.T) {
 		"/metrics": "testdata/metrics.1.txt",
 	})
 	port := local.Port(server.URL)
-	procs := fakeProcesses{port: {
-		pid:  4242,
-		args: "llama serve -m /models/Qwen3.5-0.8B-Q8_0.gguf -np 4 --sleep-idle-seconds 300 --metrics",
-		held: map[string]uint64{"vram": 1 << 30, "dram": 2 << 30},
+	procs := enginetest.Processes{port: {
+		PID:  4242,
+		Args: "llama serve -m /models/Qwen3.5-0.8B-Q8_0.gguf -np 4 --sleep-idle-seconds 300 --metrics",
+		Held: map[string]uint64{"vram": 1 << 30, "dram": 2 << 30},
 	}}
 	reading, err := newSource(server.URL, server.Client(), procs).Read(context.Background())
 	if err != nil {
