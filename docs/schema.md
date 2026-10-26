@@ -45,7 +45,7 @@ field's meaning does.
 | field | type | meaning |
 |---|---|---|
 | `name` | `"vram"`, `"dram"`, `"nvme"` | the memory: the GPU's, the host's, a drive weights stream from |
-| `capacity_bytes` | integer or null | its size; null for a pool with no fixed size (a drive holds what it is given); 0 when the box has none |
+| `capacity_bytes` | integer or null | its size; null where no size is known (a drive holds what it is given; an engine may not say); 0 when the box has none |
 
 ## models[]
 

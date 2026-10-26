@@ -36,8 +36,8 @@ type State struct {
 	Sources []Source `json:"sources"`
 }
 
-// Pool is one kind of memory. CapacityBytes is nil for a pool with no fixed
-// size, such as a drive weights stream from.
+// Pool is one kind of memory. CapacityBytes is nil where no size is known,
+// as for a drive weights stream from, which holds what it is given.
 type Pool struct {
 	Name          string  `json:"name"`
 	CapacityBytes *uint64 `json:"capacity_bytes"`

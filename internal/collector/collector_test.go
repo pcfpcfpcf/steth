@@ -31,7 +31,7 @@ func capacity(n uint64) *uint64 { return &n }
 
 func TestPollMergesSources(t *testing.T) {
 	a := &fake{engine: "a", reading: state.Reading{
-		Pools:  []state.Pool{{Name: state.NVMe}, {Name: state.VRAM, CapacityBytes: capacity(4)}},
+		Pools:  []state.Pool{{Name: state.NVMe}, {Name: state.VRAM, CapacityBytes: capacity(4)}, {Name: state.DRAM}},
 		Models: []state.Model{{ID: "m1", State: state.Idle}},
 	}}
 	b := &fake{engine: "b", reading: state.Reading{
@@ -55,6 +55,9 @@ func TestPollMergesSources(t *testing.T) {
 	}
 	if *s.Pools[0].CapacityBytes != 4 {
 		t.Errorf("vram capacity %d, expected the first source's 4", *s.Pools[0].CapacityBytes)
+	}
+	if s.Pools[1].CapacityBytes == nil || *s.Pools[1].CapacityBytes != 16 {
+		t.Error("dram capacity unknown to the first source not taken from the second")
 	}
 	if len(s.Models) != 2 || s.Models[0].Engine != "a" || s.Models[1].Endpoint != "http://b" {
 		t.Errorf("models not stamped with their source: %+v", s.Models)

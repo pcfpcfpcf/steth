@@ -46,7 +46,7 @@ Layers point down: `cmd` knows everything; `web` and `collector` know
 
 The collector stamps each model with its source's engine and endpoint, so an
 adapter never repeats them. Pools are merged by name; the first source that
-reports a pool's capacity sets it.
+knows a pool's capacity sets it.
 
 ## Stages
 

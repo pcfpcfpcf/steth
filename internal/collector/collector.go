@@ -86,7 +86,7 @@ func (c *Collector) Poll(parent context.Context) {
 }
 
 // merge joins the sources' readings: pools by name, the first source to
-// report one setting its capacity; models one after another, stamped with
+// know one's capacity setting it; models one after another, stamped with
 // their source.
 func merge(sources []Source, results []result) *state.State {
 	s := &state.State{Schema: state.Schema, Pools: []state.Pool{}, Models: []state.Model{}, Sources: []state.Source{}}
@@ -98,8 +98,11 @@ func merge(sources []Source, results []result) *state.State {
 		}
 		s.Sources = append(s.Sources, status)
 		for _, p := range r.reading.Pools {
-			if !slices.ContainsFunc(s.Pools, func(q state.Pool) bool { return q.Name == p.Name }) {
+			at := slices.IndexFunc(s.Pools, func(q state.Pool) bool { return q.Name == p.Name })
+			if at < 0 {
 				s.Pools = append(s.Pools, p)
+			} else if s.Pools[at].CapacityBytes == nil {
+				s.Pools[at].CapacityBytes = p.CapacityBytes
 			}
 		}
 		for _, m := range r.reading.Models {

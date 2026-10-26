@@ -345,8 +345,11 @@ function holding(model, pool) {
 }
 const whole = (h) => h.weights + h.cache;
 
-/* What a pool is drawn at: its capacity, or for the drive, which holds
-   whatever it is given, what streams from it. */
+/* What a pool is drawn at: its capacity, or where no size is known -- a
+   drive holds whatever it is given -- what is in it. */
+const usedText = (pool, bytes) => pool.name === "nvme"
+  ? (bytes > 0 ? `${gb(bytes)} streamed` : "nothing streamed")
+  : `${gb(bytes)} used`;
 function poolTotals(status, pool) {
   const used = sum(status.models, (m) => whole(holding(m, pool.name)));
   return { used, scale: Math.max(pool.capacity_bytes ?? used, used) };
@@ -453,13 +456,12 @@ function drawPools(status) {
   for (const pool of status.pools) {
     const view = square(pool.name);
     const { used, scale } = poolTotals(status, pool);
-    const drive = pool.capacity_bytes == null, absent = pool.capacity_bytes === 0;
-    tween(view.figure, used, (bytes) => drive
-      ? (bytes > 0 ? `${gb(bytes)} streamed` : "nothing streamed")
+    const unsized = pool.capacity_bytes == null, absent = pool.capacity_bytes === 0;
+    tween(view.figure, used, (bytes) => unsized ? usedText(pool, bytes)
       : absent ? "none" : `${gb(bytes)} of ${gb(pool.capacity_bytes)}`);
 
     const items = status.models.map((m) => ({ key: keyOf(m), area: whole(holding(m, pool.name)) }));
-    if (!drive) items.push({ key: FREE, area: pool.capacity_bytes - used });
+    if (!unsized) items.push({ key: FREE, area: pool.capacity_bytes - used });
     const placed = treemap(items, 0, 0, 1, 1, []);
     const side = view.el.clientWidth;
 
@@ -492,7 +494,7 @@ function drawPools(status) {
     }
 
     const free = placed.find((p) => p.key === FREE);
-    if (!drive && !absent) {
+    if (!unsized && !absent) {
       const el = freeFor(view, pool.name);
       el.classList.toggle("gone", !free);
       if (free) place(el, free); else el.style.width = el.style.height = "0";
@@ -501,7 +503,7 @@ function drawPools(status) {
         free && free.w * side >= LABEL_MIN_PX.width && free.h * side >= LABEL_MIN_PX.height ? 1 : 0;
     }
     view.el.classList.toggle("focused", selected.model != null);
-    view.empty.textContent = used > 0 ? "" : drive ? "Nothing streams: every model is held in memory"
+    view.empty.textContent = used > 0 ? "" : pool.name === "nvme" ? "Nothing streams: every model is held in memory"
       : absent ? `No ${poolInfo(pool.name).label.toLowerCase()} on this box` : "Empty";
   }
 }
@@ -612,14 +614,15 @@ function poolDetails(status, name) {
     return `<div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
       <div class="note">No ${poolInfo(name).label.toLowerCase()} on this box: every model is held elsewhere.</div>`;
   const { used } = poolTotals(status, pool);
-  const drive = pool.capacity_bytes == null;
-  const of = drive ? used : pool.capacity_bytes;
+  const unsized = pool.capacity_bytes == null;
+  const of = unsized ? used : pool.capacity_bytes;
   const share = (bytes) => (of > 0 ? bytes / of : 0);
   return `
     <div class="panel-head"><h3>${poolInfo(name).label}</h3><button class="close" aria-label="Close">×</button></div>
     <div class="note">${poolInfo(name).detail}</div>
-    <div class="big"><b>${gb(used)}</b><span>${drive ? "streamed from the drive" : `of ${gb(pool.capacity_bytes)} in use`}</span></div>
-    ${drive ? "" : `<div class="facts"><div><small>Free</small><span>${gb(pool.capacity_bytes - used)}</span></div>
+    <div class="big"><b>${gb(used)}</b><span>${unsized ? (pool.name === "nvme" ? "streamed from the drive" : "in use; no engine says its size")
+      : `of ${gb(pool.capacity_bytes)} in use`}</span></div>
+    ${unsized ? "" : `<div class="facts"><div><small>Free</small><span>${gb(pool.capacity_bytes - used)}</span></div>
       <div><small>In use</small><span>${Math.round(share(used) * 100)}%</span></div></div>`}
     <h4>Held by</h4>
     <table><thead><tr><th>Model</th><th>Weights</th><th>KV</th><th>Share</th></tr></thead><tbody>
