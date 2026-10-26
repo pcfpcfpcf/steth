@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/fetch"
+	"github.com/pcfpcfpcf/steth/internal/engine/local"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
@@ -34,13 +35,11 @@ type Source struct {
 	// by the name a router knows it by, "" for a server of one model.
 	last, next map[string]counters
 	// The local server processes, by the port each listens on.
-	proc    processes
-	servers map[int]*server
+	local *local.Finder
 }
 
 func New(endpoint string, client *http.Client) *Source {
-	return &Source{endpoint: endpoint, client: client, last: map[string]counters{},
-		proc: boxProcesses{}, servers: map[int]*server{}}
+	return &Source{endpoint: endpoint, client: client, last: map[string]counters{}, local: local.NewFinder(Runs)}
 }
 
 func (s *Source) Engine() string   { return Engine }
@@ -95,7 +94,7 @@ func (s *Source) read(ctx context.Context) (state.Reading, error) {
 	if props.Role == "router" {
 		return s.readRouter(ctx)
 	}
-	m, err := s.readModel(ctx, props, "", s.processAt(localPort(s.endpoint)))
+	m, err := s.readModel(ctx, props, "", s.local.At(local.Port(s.endpoint)))
 	if err != nil {
 		return state.Reading{}, err
 	}
@@ -119,9 +118,9 @@ func (s *Source) readRouter(ctx context.Context) (state.Reading, error) {
 			}
 			// A router's servers run beside it, each on the port it was
 			// started with.
-			var child *server
-			if localPort(s.endpoint) != 0 {
-				child = s.processAt(launch(entry.Status.Args).port())
+			var child *local.Server
+			if local.Port(s.endpoint) != 0 {
+				child = s.local.At(launch(entry.Status.Args).port())
 			}
 			m, err := s.readModel(ctx, props, entry.ID, child)
 			if err != nil {
@@ -145,7 +144,7 @@ func (s *Source) readRouter(ctx context.Context) (state.Reading, error) {
 // readModel reads one server's model: `model` names it to a router, and is
 // empty for a server running one model. `proc` is the server's process
 // where it can be seen, nil otherwise.
-func (s *Source) readModel(ctx context.Context, props wireProps, model string, proc *server) (state.Model, error) {
+func (s *Source) readModel(ctx context.Context, props wireProps, model string, proc *local.Server) (state.Model, error) {
 	nCtx := props.DefaultGenerationSettings.NCtx
 	m := state.Model{
 		ID:       props.ModelAlias,
@@ -172,7 +171,7 @@ func (s *Source) readModel(ctx context.Context, props wireProps, model string, p
 	}
 	// Reading /slots also restarts the idle timer, so a server that sleeps
 	// when idle would never sleep while steth watches it.
-	if !props.EndpointSlots || (proc != nil && proc.args.sleeps()) {
+	if !props.EndpointSlots || (proc != nil && launch(proc.Args).sleeps()) {
 		if m.Running != nil {
 			m.State = state.Idle
 			if *m.Running > 0 {
@@ -248,8 +247,8 @@ func argsOf(args []string) state.Setting {
 // readProcess fills `m` from the server's process: what it holds in each
 // pool, its command line, and the KV cache's whole size where the slots
 // split it rather than share it.
-func (s *Source) readProcess(ctx context.Context, props wireProps, proc *server, m *state.Model) error {
-	held, err := s.proc.memory(ctx, proc.pid)
+func (s *Source) readProcess(ctx context.Context, props wireProps, proc *local.Server, m *state.Model) error {
+	held, err := s.local.Processes.Memory(ctx, proc.PID)
 	if err != nil {
 		return err
 	}
@@ -258,8 +257,8 @@ func (s *Source) readProcess(ctx context.Context, props wireProps, proc *server,
 		m.Pools[pool] = state.Holding{WeightBytes: bytes}
 	}
 	m.Fidelity["pools"] = state.Measured
-	m.Config["launch args"] = state.Setting{Value: []string(proc.args), Source: "launch args"}
-	if !proc.args.unifiedKV() && props.TotalSlots > 1 {
+	m.Config["launch args"] = state.Setting{Value: proc.Args, Source: "launch args"}
+	if !launch(proc.Args).unifiedKV() && props.TotalSlots > 1 {
 		whole := props.DefaultGenerationSettings.NCtx * props.TotalSlots
 		m.Context = &whole
 		m.Fidelity["context"] = state.Derived

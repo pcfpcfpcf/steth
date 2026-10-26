@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/enginetest"
+	"github.com/pcfpcfpcf/steth/internal/engine/local"
 )
 
 const child = "?autoload=false&model=qwen3.5-0.8b"
@@ -19,9 +20,9 @@ type fakeProcesses map[int]struct {
 	held map[string]uint64
 }
 
-func (p fakeProcesses) pidAt(port int) int { return p[port].pid }
+func (p fakeProcesses) PIDAt(port int) int { return p[port].pid }
 
-func (p fakeProcesses) cmdline(pid int) ([]string, error) {
+func (p fakeProcesses) Cmdline(pid int) ([]string, error) {
 	for _, proc := range p {
 		if proc.pid == pid {
 			return strings.Fields(proc.args), nil
@@ -30,7 +31,7 @@ func (p fakeProcesses) cmdline(pid int) ([]string, error) {
 	return nil, errors.New("no such process")
 }
 
-func (p fakeProcesses) memory(_ context.Context, pid int) (map[string]uint64, error) {
+func (p fakeProcesses) Memory(_ context.Context, pid int) (map[string]uint64, error) {
 	for _, proc := range p {
 		if proc.pid == pid {
 			return proc.held, nil
@@ -43,7 +44,7 @@ func (p fakeProcesses) memory(_ context.Context, pid int) (map[string]uint64, er
 // machine where none can be seen.
 func newSource(url string, client *http.Client, procs fakeProcesses) *Source {
 	s := New(url, client)
-	s.proc = procs
+	s.local.Processes = procs
 	return s
 }
 
@@ -108,7 +109,7 @@ func TestVisibleProcess(t *testing.T) {
 		"/props":   "testdata/metrics.props.json",
 		"/metrics": "testdata/metrics.1.txt",
 	})
-	port := localPort(server.URL)
+	port := local.Port(server.URL)
 	procs := fakeProcesses{port: {
 		pid:  4242,
 		args: "llama serve -m /models/Qwen3.5-0.8B-Q8_0.gguf -np 4 --sleep-idle-seconds 300 --metrics",
