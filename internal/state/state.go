@@ -3,6 +3,8 @@
 // documented in docs/schema.md; fields are added, never renamed.
 package state
 
+import "time"
+
 // Schema changes only when a field's meaning does.
 const Schema = 1
 
@@ -59,7 +61,19 @@ type Model struct {
 	Context    *int64             `json:"context"`
 	MaxContext *int64             `json:"max_context"`
 	Pools      map[string]Holding `json:"pools"`
+	Running    *int64             `json:"running"`
+	DecodeTPS  *float64           `json:"decode_tps"`
+	PrefillTPS *float64           `json:"prefill_tps"`
+	UnloadsAt  *time.Time         `json:"unloads_at"`
+	Config     map[string]Setting `json:"config"`
 	Fidelity   map[string]string  `json:"fidelity"`
+}
+
+// Setting is one launch or load setting as the engine reports it, and
+// where it was read.
+type Setting struct {
+	Value  any    `json:"value"`
+	Source string `json:"source"`
 }
 
 // Holding is what a model holds in one pool: its weights and buffers, and

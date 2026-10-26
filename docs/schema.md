@@ -31,7 +31,12 @@ field's meaning does.
         "vram": {"weight_bytes": 2147483648, "kv_bytes_per_token": 73728},
         "dram": {"weight_bytes": 0, "kv_bytes_per_token": 0}
       },
-      "fidelity": {"kv_tokens": "measured", "context": "measured", "pools": "measured"}
+      "running": 1,
+      "decode_tps": 14.2,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
+      "fidelity": {"kv_tokens": "measured", "context": "measured", "pools": "measured", "decode_tps": "derived"}
     }
   ],
   "sources": [
@@ -66,6 +71,11 @@ known (`id`, `engine`, `endpoint`, `state`).
 | `context` | integer or null | tokens its KV cache is sized for now |
 | `max_context` | integer or null | the most tokens it can grow to |
 | `pools` | object or null | per pool name: `weight_bytes`, what it holds there besides its KV cache, and `kv_bytes_per_token`, what each token of context reserves there. The KV cache reserved in a pool is `kv_bytes_per_token × context`; in use, `kv_bytes_per_token × min(kv_tokens, context)`. `kv_bytes_per_token` is null where the engine does not split its KV cache from the rest; `weight_bytes` then includes it |
+| `running` | integer or null | requests it is serving now |
+| `decode_tps` | number or null | tokens per second it generated over the last poll, while generating |
+| `prefill_tps` | number or null | prompt tokens per second it processed over the last poll, while processing |
+| `unloads_at` | string or null | RFC 3339 time its engine will unload it if no request comes first |
+| `config` | object or null | setting name → `{"value", "source"}`: how the engine was launched or the model loaded, as the engine reports it (`source` names where: an endpoint, or `launch args`). Names are the engine's own, read-only |
 | `fidelity` | object | field name → `"measured"` or `"derived"` |
 
 ## sources[]

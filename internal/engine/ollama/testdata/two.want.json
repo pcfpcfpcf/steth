@@ -29,6 +29,11 @@
           "kv_bytes_per_token": null
         }
       },
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
       "fidelity": {
         "context": "measured",
         "pools": "measured"
@@ -53,6 +58,11 @@
           "kv_bytes_per_token": null
         }
       },
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
       "fidelity": {
         "context": "measured",
         "pools": "measured"

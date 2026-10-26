@@ -11,6 +11,11 @@
       "context": 4096,
       "max_context": null,
       "pools": null,
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
       "fidelity": {
         "context": "measured",
         "kv_tokens": "measured"
@@ -26,6 +31,11 @@
       "context": null,
       "max_context": null,
       "pools": null,
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
       "fidelity": {}
     },
     {
@@ -38,6 +48,11 @@
       "context": null,
       "max_context": null,
       "pools": null,
+      "running": null,
+      "decode_tps": null,
+      "prefill_tps": null,
+      "unloads_at": null,
+      "config": null,
       "fidelity": {}
     }
   ]
