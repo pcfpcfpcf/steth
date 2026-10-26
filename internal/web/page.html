@@ -183,6 +183,7 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .08em; text-transform: u
 .note { margin-top: 8px; font-size: 13px; color: var(--muted); }
 .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
 .facts small, .panel h4 { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0; }
+.fid { font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; margin-left: 4px; padding: 0 5px; border-radius: 4px; background: var(--track); color: var(--ink-2); }
 .facts span { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .panel h4 { margin: 28px 0 8px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -250,8 +251,6 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
 <script>
 "use strict";
 const POLL_MS = 1000;
-/* Rates are read off how fast a cache grows, over this much of the past. */
-const RATE_WINDOW_MS = 4000;
 /* A block shows its name only where the name fits. */
 const LABEL_MIN_PX = { width: 84, height: 46 };
 const KV_LABEL_MIN_PX = { width: 64, height: 22 };
@@ -516,7 +515,6 @@ function drawPools(status) {
 
 /* ---- the model rows ---- */
 const rows = new Map();
-const growth = new Map(); /* per model: recent [time, cache tokens] while it serves */
 function rowFor(m) {
   const key = keyOf(m);
   if (rows.has(key)) return rows.get(key);
@@ -532,18 +530,6 @@ function rowFor(m) {
   return el;
 }
 
-function rate(model, now) {
-  const key = keyOf(model);
-  if (!growth.has(key)) growth.set(key, []);
-  const seen = growth.get(key);
-  if (model.state !== "serving" || model.kv_tokens == null) { seen.length = 0; return null; }
-  seen.push([now, model.kv_tokens]);
-  while (seen.length > 2 && now - seen[0][0] > RATE_WINDOW_MS) seen.shift();
-  const [t0, n0] = seen[0];
-  if (now - t0 < POLL_MS / 2 || model.kv_tokens < n0) return null;
-  return ((model.kv_tokens - n0) / (now - t0)) * 1000;
-}
-
 const stateBadge = (m) =>
   `<span class="state ${escape(m.state)}"><i></i><span>${STATES[m.state] ?? escape(m.state)}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
 const fill = (m) => (m.context > 0 ? Math.min(1, (m.kv_tokens ?? 0) / m.context) : 0);
@@ -551,12 +537,10 @@ const fill = (m) => (m.context > 0 ? Math.min(1, (m.kv_tokens ?? 0) / m.context)
 const tokens = (m, format, sep = " / ") =>
   `${m.kv_tokens == null ? "–" : format(m.kv_tokens)}${sep}${m.context == null ? "–" : format(m.context)}`;
 
-const rates = new Map();
-function drawModels(status, now) {
+function drawModels(status) {
   $("no-models").hidden = status.models.length > 0;
   for (const m of status.models) {
     const el = rowFor(m);
-    rates.set(keyOf(m), rate(m, now));
     el.classList.toggle("selected", selected.model === keyOf(m));
     el.querySelector(".model-name .id").textContent = m.id;
     el.querySelector(".model-name .engine").textContent = m.engine;
@@ -565,10 +549,21 @@ function drawModels(status, now) {
     el.querySelector(".tokens").textContent = `KV ${tokens(m, count)}`;
     el.querySelector(".meter").style.visibility = m.kv_tokens == null ? "hidden" : "";
     el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
-    el.querySelector(".rate").textContent = rateText(rates.get(keyOf(m)), "");
+    el.querySelector(".rate").textContent = m.decode_tps == null ? "" : tps(m.decode_tps);
   }
 }
-const rateText = (r, none) => (r == null ? none : `${r.toFixed(1)} tok/s`);
+const tps = (r) => `${r.toFixed(r >= 100 ? 0 : 1)} tok/s`;
+
+/* One fact of a model: its value, a dash where the engine does not say it,
+   and a mark where steth worked it out rather than read it. */
+function fact(m, field, label, format) {
+  const value = m[field];
+  const derived = m.fidelity?.[field] === "derived";
+  const shown = value == null
+    ? `<span title="${escape(m.engine)} does not report this">–</span>`
+    : `<span>${format(value)}</span>`;
+  return `<div><small>${label}${derived ? ` <em class="fid" title="Computed by steth from what ${escape(m.engine)} reports">derived</em>` : ""}</small>${shown}</div>`;
+}
 
 function drawSummary(status) {
   const serving = status.models.filter((m) => m.state === "serving").map((m) => m.id);
@@ -589,7 +584,7 @@ let selected = {};
 function select(what) {
   selected = what;
   hideTip();
-  if (current) draw(current, performance.now());
+  if (current) draw(current);
 }
 function closePanel() { select({}); }
 $("scrim").addEventListener("click", closePanel);
@@ -618,7 +613,8 @@ function modelDetails(status, key) {
     <div class="facts">
       <div><small>KV reserved</small><span>${size(reserved)}</span></div>
       <div><small>KV per token</small><span>${size(perToken)}</span></div>
-      <div><small>Rate</small><span>${rateText(rates.get(key), "–")}</span></div>
+      ${fact(m, "decode_tps", "Decode", tps)}
+      ${fact(m, "prefill_tps", "Prefill", tps)}
     </div>
     <h4>Where it is held</h4>
     <table><thead><tr><th>Pool</th><th>Weights</th><th>KV reserved</th><th>KV in use</th></tr></thead><tbody>
@@ -710,15 +706,13 @@ function forget(key) {
     view.blocks.get(key)?.remove();
     view.blocks.delete(key);
   }
-  growth.delete(key);
-  rates.delete(key);
   if (selected.model === key) selected = {};
 }
 
-function draw(status, now) {
+function draw(status) {
   drawSummary(status);
   drawPools(status);
-  drawModels(status, now);
+  drawModels(status);
   drawPanel(status);
 }
 
@@ -736,7 +730,7 @@ async function poll() {
     if (!response.ok) throw new Error(`status ${response.status}`);
     current = await response.json();
     track(current, forget);
-    draw(current, performance.now());
+    draw(current);
     drawSources(current.sources);
   } catch (e) {
     setLive("off", "steth is not answering", String(e));
