@@ -1,0 +1,20 @@
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"!"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" Nice"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" to"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" meet"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" you"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"."},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+
+data: {"id":"chatcmpl-581","object":"chat.completion.chunk","created":1794153287,"model":"qwen2.5:1.5b","system_fingerprint":"fp_ollama","choices":[],"usage":{"prompt_tokens":35,"completion_tokens":8,"total_tokens":43}}
+
+data: [DONE]
+
