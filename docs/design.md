@@ -10,8 +10,8 @@ only through each engine's own controls, and only when someone asks.**
 
 Stages 1–7 (monitoring) and 8–11 (managing: launching engines, chat with
 per-reply timings, load and unload, none of it tied to one engine) are
-built. The page keeps its placement view and model cards on top; the
-controls sit below them in one workspace (see "The page").
+built. The page keeps its placement view and model cards on the left; the
+controls sit beside them in one workspace (see "The page").
 
 ## What it is not
 
@@ -148,13 +148,17 @@ in the page only.
 
 ### The page
 
-One page, in order: memory pools (01), models (02), then, where steth takes
-actions, the workspace. Its toolbar picks one model from every engine's
+One page in two columns: memory pools (01) and models (02) on the left and,
+where steth takes actions, the workspace on the right, held in view as the
+left scrolls, with the conversation taking the height the rest leaves.
+Under 1100 px wide the workspace follows the models; bound off loopback the
+box takes the whole width. The toolbar picks one model from every engine's
 loaded models and those an engine with controls could load, grouped by
 engine and endpoint, with *Load* or *Unload* for it; and, with launch
 profiles, an engine profile, its `{model}`, *Start* and *Stop*. A line
-under the toolbar says what the last action did, or the engine's refusal.
-Below, the conversation (03) with the model picked, one kept per model, and
+under the toolbar, there only when it has something to say, gives what the
+last action did or the engine's refusal; the masthead's `LOCAL ONLY` says,
+on hover, where prompts go. Below, the conversation (03) with the model picked, one kept per model, and
 its pulse (04): the last reply's decode, prefill and first text with where
 each came from (`ENGINE`, `DERIVED`), the time this page waited, the
 model's decode speed from the state over two minutes, its state, requests,

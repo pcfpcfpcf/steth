@@ -4,6 +4,15 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **The page in two columns.** Asked for by the owner, who did not like
+  the workspace stacked under the box. The pools and models go left; the
+  toolbar, conversation and pulse go right, sticky and the viewport's
+  height, so the conversation and the numbers stay in view while the box
+  scrolls, and a reply is watched next to where the model sits. To fit a 900 px tall window the pulse is a strip: its chart is
+  shorter, its engine details two columns, its caption a hover. The fixed
+  line about where prompts go moved to the hover of `LOCAL ONLY`. Checked
+  at 1440, 1280, 1024 and 390 px wide, light and dark, and monitor-only.
+
 - **steth will manage engines too** (docs/design.md, stages 8–11; approved,
   and built the same day): launch engines, chat, per-reply timings, load
   and unload. This reverses "not a model manager". Objection raised and

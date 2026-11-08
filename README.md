@@ -60,8 +60,10 @@ Actions answer only on a loopback `--listen` address (the default), and only
 to steth's own page: a request from another site or through a name that is
 not this machine's gets 403. Bound elsewhere, steth only watches.
 
-Below the models, a toolbar picks a model and, with launch profiles, an
-engine; under it are the conversation and that model's pulse.
+Beside the pools and models, a column holds a toolbar that picks a model
+and, with launch profiles, an engine; under it are the conversation and
+that model's pulse. The column stays in view as the box scrolls; on a
+narrow screen it follows the models.
 
 - **Chat.** Pick a model in the toolbar, or *Talk to it* from its details,
   and send a prompt. It goes to that model

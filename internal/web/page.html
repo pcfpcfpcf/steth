@@ -98,14 +98,12 @@ button span[aria-hidden] { margin-left: 12px; }
 .theme button[aria-pressed="true"] { background: var(--well); color: var(--ink); }
 
 main { max-width: 1480px; margin: auto; padding: 0 42px; }
-.intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 34px 0 26px; }
-h1 { font: normal clamp(29px, 3.1vw, 45px) var(--serif); letter-spacing: -.045em; margin: 12px 0 6px; }
+.intro { margin: 0 0 -6px; }
+h1 { font: normal clamp(26px, 2.5vw, 36px) var(--serif); letter-spacing: -.045em; margin: 8px 0 4px; }
 .summary { margin: 0; color: var(--ink-2); min-height: 1.5em; }
-.intro-note { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 0; text-align: right; }
 
 /* ---- sheets: the numbered sections ---- */
 .sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.sheet + .sheet, .sheet + #workspace { margin-top: 24px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
 .section-heading > div { display: flex; gap: 12px; align-items: center; }
 .section-number { font: 10px var(--mono); color: var(--accent); }
@@ -113,13 +111,13 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 .section-heading .aside { font: 10px var(--mono); letter-spacing: .06em; color: var(--muted); }
 .sheet-body { padding: 20px; }
 .nothing { margin: 0; color: var(--muted); font-size: 13px; }
-.caption { font-size: 10px; line-height: 1.65; color: var(--muted); margin: 10px 20px 16px; }
+.caption { font-size: 10px; line-height: 1.6; color: var(--muted); margin: 6px 20px 8px; }
 
 /* ---- the pools: one square each, filled by the models ---- */
 .pools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 @media (max-width: 900px) { .pools { grid-template-columns: 1fr; max-width: 460px; } }
 .pool-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; background: none; padding: 0; width: 100%; text-align: left; border-radius: 0; }
-.pool-name { font: normal 19px var(--serif); letter-spacing: -.02em; }
+.pool-name { font: normal 19px var(--serif); letter-spacing: -.02em; white-space: nowrap; }
 .pool-name small { font: 9px var(--mono); letter-spacing: .12em; color: var(--muted); margin-left: 8px; text-transform: uppercase; }
 .pool-figure { font: 11px var(--mono); color: var(--ink-2); white-space: nowrap; }
 .square { position: relative; aspect-ratio: 1; border-radius: 8px; background: var(--well); box-shadow: inset 0 0 0 1px var(--ring); overflow: hidden; }
@@ -189,26 +187,32 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 @keyframes breathe { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 20%, transparent); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---- the workspace: pick a model, talk to it, watch it ---- */
-#workspace { margin-top: 24px; }
-.toolbar {
-  display: flex; align-items: end; gap: 10px; flex-wrap: wrap; padding: 14px 18px;
-  background: var(--well); border: 1px solid var(--line); border-radius: 7px;
+/* ---- two columns: the box on the left, the workspace beside it ---- */
+.layout { margin-top: 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(440px, 560px); gap: 24px; align-items: start; }
+.layout.solo { grid-template-columns: minmax(0, 1fr); }
+.box-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.work-col {
+  position: sticky; top: 16px; height: calc(100vh - 128px); min-height: 600px; overflow-y: auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
+
+/* ---- the workspace: pick a model, talk to it, watch it ---- */
+.toolbar { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; background: var(--well); border: 1px solid var(--line); border-radius: 7px; }
+.tool-row { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.tool-row + .tool-row { border-top: 1px solid var(--line); padding-top: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.field.grow { flex: 1 1 260px; }
+.field.grow { flex: 1 1 180px; }
 .field label { font: 9px var(--mono); letter-spacing: .15em; color: var(--muted); }
 .field select { width: 100%; border: 0; background: transparent; padding: 0 18px 5px 0; font-size: 14px; }
 .field select option, .field select optgroup { background: var(--sheet); color: var(--ink); }
-.toolbar .divider { align-self: stretch; width: 1px; background: var(--line); margin: 0 6px; }
-#notice { font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 18px; margin: 12px 2px 20px; word-break: break-word; }
+#notice { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0 2px; word-break: break-word; }
+#notice:empty { display: none; }
 #notice.error { color: var(--accent); }
-.workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); gap: 24px; align-items: start; }
-.messages { height: 470px; min-height: 280px; overflow-y: auto; padding: 20px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.welcome { min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-.orbit { font: 72px var(--serif); height: 74px; color: var(--mint); transform: rotate(15deg); }
-.welcome h3 { font: normal 28px var(--serif); letter-spacing: -.035em; margin: 8px 0; }
-.welcome > p:not(.eyebrow) { font-size: 12px; line-height: 1.8; color: var(--muted); margin: 0; }
+.chat { flex: 1 1 0; min-height: 260px; display: flex; flex-direction: column; }
+.messages { flex: 1 1 auto; min-height: 80px; overflow-y: auto; padding: 14px 20px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.welcome h3 { font: normal 21px var(--serif); letter-spacing: -.035em; margin: 6px 0; }
+.welcome > p:not(.eyebrow) { font-size: 12px; line-height: 1.6; color: var(--muted); margin: 0; }
 .message { padding: 4px 0 22px; animation: reveal .3s ease; }
 .message .role { font: 10px var(--mono); letter-spacing: .12em; color: var(--mint); margin: 0 0 10px; text-transform: uppercase; }
 .message.user .role { color: var(--accent); }
@@ -220,26 +224,28 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 .message .result-note.error { color: var(--accent); }
 @keyframes reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .composer { margin: 0 18px; border: 1px solid color-mix(in srgb, var(--muted) 35%, var(--line)); border-radius: 7px; background: var(--page); }
-.composer textarea { display: block; resize: vertical; min-height: 78px; max-height: 240px; border: 0; outline: none; background: none; padding: 14px 14px 0; width: 100%; line-height: 1.6; }
+.composer textarea { display: block; resize: vertical; min-height: 44px; max-height: 240px; border: 0; outline: none; background: none; padding: 14px 14px 0; width: 100%; line-height: 1.6; }
 .composer textarea::placeholder { color: var(--muted); }
 .composer-footer { padding: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .composer-footer > span { font: 9px var(--mono); color: var(--muted); }
 .composer-footer > div { display: flex; gap: 8px; }
 .composer-footer button { font-size: 11px; padding: 9px 12px; }
-.settings { padding: 16px 20px; color: var(--muted); font-size: 11px; }
+.settings { padding: 12px 20px; color: var(--muted); font-size: 11px; }
 summary { cursor: pointer; }
 .settings-fields { display: flex; gap: 20px; margin-top: 14px; }
 .settings-fields label { display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .settings-fields input { width: 100%; padding: 7px; border: 1px solid var(--line); background: var(--page); border-radius: 4px; }
 .settings p { font-size: 10px; line-height: 1.6; margin: 12px 0 0; }
-.pulse { display: flex; flex-direction: column; gap: 14px; }
-.pulse .section-heading { border: 0; padding-bottom: 6px; }
+.pulse { flex: none; }
+.work-col .section-heading { padding: 10px 20px; }
+.pulse .section-heading { border: 0; padding: 12px 20px 2px; }
 .pill { font: 9px var(--mono); letter-spacing: .1em; background: var(--well); padding: 6px 8px; border-radius: 4px; }
-.metrics { padding: 10px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.metrics { padding: 8px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .metric-label { font: 8px var(--mono); letter-spacing: .08em; color: var(--muted); display: block; margin-bottom: 6px; }
-.metrics strong { font: normal 32px var(--serif); letter-spacing: -.04em; }
+.metrics strong { font: normal 27px var(--serif); letter-spacing: -.04em; white-space: nowrap; }
 .metrics small { font: 10px var(--mono); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
-.chart-heading { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 10px; }
+.chart-heading { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px 4px; }
+.chart-heading h2 { font: 8px var(--mono); letter-spacing: .08em; color: var(--muted); }
 .chart-heading > span { font: 10px var(--mono); color: var(--muted); }
 .chart { display: block; width: calc(100% - 40px); margin: 0 20px; height: auto; overflow: visible; }
 .chart .grid { stroke: var(--line); stroke-dasharray: 3 5; }
@@ -247,11 +253,10 @@ summary { cursor: pointer; }
 .chart .none { font: 11px var(--sans); }
 .chart path { fill: none; stroke: var(--mint); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .chart circle { fill: var(--mint); }
-.chart-axis { display: flex; justify-content: space-between; margin: 6px 20px 0; font: 8px var(--mono); letter-spacing: .08em; color: var(--muted); }
-.engine-details { padding: 2px 5px; color: var(--muted); font-size: 10px; }
-.engine-row { display: flex; justify-content: space-between; gap: 14px; margin: 11px 0; }
+.engine-details { padding: 4px 20px 12px; color: var(--muted); font-size: 10px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+.engine-row { display: flex; justify-content: space-between; gap: 10px; margin: 5px 0; min-width: 0; }
 .engine-row strong { color: var(--ink); font: 10px var(--mono); text-align: right; overflow-wrap: anywhere; }
-.engine-details details { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 14px; }
+.engine-details details { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 9px; margin-top: 6px; }
 .engine-details pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; font: 10px/1.7 var(--mono); background: var(--well); padding: 10px; border-radius: 4px; }
 
 footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding: 22px 0; margin-top: 32px; color: var(--muted); font: 9px var(--mono); letter-spacing: .06em; }
@@ -308,20 +313,24 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
 .tip .row span:last-child { color: var(--ink); }
 .tip .more { margin-top: 6px; font-size: 10px; color: var(--muted); }
 
+/* one column: the workspace follows the box, the conversation its own height */
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .work-col { position: static; height: auto; min-height: 0; overflow: visible; }
+  .chat { flex: none; }
+  .messages { flex: none; height: clamp(260px, 50vh, 520px); }
+}
 @media (max-width: 950px) {
   main { padding: 0 22px; }
   .masthead { padding: 20px 22px; }
-  .workspace { grid-template-columns: 1fr; }
-  .intro-note { display: none; }
 }
 @media (max-width: 640px) {
   main { padding: 0 16px; }
   .masthead { padding: 16px; }
   .tag { display: none; }
-  .toolbar .divider { display: none; }
-  .toolbar button { flex: 1; }
-  .messages { height: 400px; }
-  .welcome { min-height: 330px; }
+  .tool-row button { flex: 1; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .engine-details { grid-template-columns: 1fr; }
   .composer-footer > span { display: none; }
   footer { flex-direction: column; }
 }
@@ -344,53 +353,54 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
   </div>
 </header>
 <main>
-  <section class="intro">
-    <div>
-      <p class="eyebrow">EVERY ENGINE ON THIS BOX</p>
-      <h1>What this box holds.</h1>
-      <p class="summary" id="summary"></p>
-    </div>
-    <p class="intro-note">Read from each engine, never invented.<br>A dash where it does not say.</p>
-  </section>
-
-  <section class="sheet">
-    <div class="section-heading"><div><span class="section-number">01</span><h2>Memory pools</h2></div><span class="aside">CLICK A MODEL OR A POOL</span></div>
-    <div class="sheet-body">
-      <div class="pools" id="pools"></div>
-      <p class="nothing" id="no-pools" hidden>No engine has said what memory this box has yet.</p>
-      <div class="hint">
-        <span><i class="swatch kv-key"></i>KV cache: its box is reserved, the darker part in use</span>
-        <span><i class="swatch other-key"></i>Other: in use, not by a model steth reads</span>
-        <span><i class="swatch free-key"></i>Free</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="sheet">
-    <div class="section-heading"><div><span class="section-number">02</span><h2>Models</h2></div></div>
-    <div class="sheet-body">
-      <div class="models" id="models"></div>
-      <p class="nothing" id="no-models" hidden>No model is loaded.</p>
-    </div>
-  </section>
-
-  <section id="workspace" hidden>
-    <div class="toolbar" aria-label="Model and engine">
-      <div class="field grow"><label for="model">MODEL</label><select id="model"></select></div>
-      <button id="load" class="secondary" hidden>Load</button>
-      <span class="divider" id="launch-divider"></span>
-      <div class="field" id="profile-field"><label for="profile">ENGINE</label><select id="profile"></select></div>
-      <div class="field" id="profile-model-field"><label for="profile-model">WITH</label><select id="profile-model"></select></div>
-      <button id="start" class="primary">Start engine <span aria-hidden="true">&rarr;</span></button>
-      <button id="stop-engine" class="text-button">Stop engine</button>
-    </div>
-    <p id="notice" role="status">Prompts and actions go only to the engines steth reads, and only from this machine.</p>
-    <div class="workspace">
+  <div class="layout" id="layout">
+    <div class="box-col">
+      <section class="intro">
+        <p class="eyebrow">EVERY ENGINE ON THIS BOX</p>
+        <h1>What this box holds.</h1>
+        <p class="summary" id="summary"></p>
+      </section>
       <section class="sheet">
+        <div class="section-heading"><div><span class="section-number">01</span><h2>Memory pools</h2></div><span class="aside">CLICK A MODEL OR A POOL</span></div>
+        <div class="sheet-body">
+          <div class="pools" id="pools"></div>
+          <p class="nothing" id="no-pools" hidden>No engine has said what memory this box has yet.</p>
+          <div class="hint">
+            <span><i class="swatch kv-key"></i>KV cache: its box is reserved, the darker part in use</span>
+            <span><i class="swatch other-key"></i>Other: in use, not by a model steth reads</span>
+            <span><i class="swatch free-key"></i>Free</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <div class="section-heading"><div><span class="section-number">02</span><h2>Models</h2></div></div>
+        <div class="sheet-body">
+          <div class="models" id="models"></div>
+          <p class="nothing" id="no-models" hidden>No model is loaded.</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="work-col" id="workspace" hidden>
+      <div class="toolbar" aria-label="Model and engine">
+        <div class="tool-row">
+          <div class="field grow"><label for="model">MODEL</label><select id="model"></select></div>
+          <button id="load" class="secondary" hidden>Load</button>
+        </div>
+        <div class="tool-row" id="launch-row">
+          <div class="field"><label for="profile">ENGINE</label><select id="profile"></select></div>
+          <div class="field grow" id="profile-model-field"><label for="profile-model">WITH</label><select id="profile-model"></select></div>
+          <button id="start" class="primary">Start <span aria-hidden="true">&rarr;</span></button>
+          <button id="stop-engine" class="text-button">Stop</button>
+        </div>
+      </div>
+      <p id="notice" role="status"></p>
+      <section class="sheet chat">
         <div class="section-heading"><div><span class="section-number">03</span><h2>Conversation</h2></div><button id="clear" class="text-button">New chat</button></div>
         <div id="messages" class="messages" role="log" aria-label="Conversation"></div>
         <form id="composer" class="composer">
-          <textarea id="prompt" rows="3" placeholder="Ask this model something" aria-label="Message"></textarea>
+          <textarea id="prompt" rows="2" placeholder="Ask this model something" aria-label="Message"></textarea>
           <div class="composer-footer"><span>ENTER TO SEND · SHIFT + ENTER FOR A NEW LINE</span>
             <div><button type="button" id="stop-reply" class="secondary" hidden>Stop reply</button><button id="send" class="primary">Send message <span aria-hidden="true">&uarr;</span></button></div></div>
         </form>
@@ -402,34 +412,27 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
           <p>Left empty, each is the engine's own. The conversation stays in this page, one per model. A stopped reply closes the request, and the engine stops with it.</p>
         </details>
       </section>
-      <aside class="pulse" aria-label="This model, measured">
-        <section class="sheet">
-          <div class="section-heading"><div><span class="section-number">04</span><h2>Reply pulse</h2></div><span id="phase" class="pill">NO MODEL</span></div>
-          <div class="metrics">
-            <div><span class="metric-label" id="decode-label">DECODE</span><strong id="decode">--<small>tok/s</small></strong></div>
-            <div><span class="metric-label">FIRST TEXT / STETH</span><strong id="first-text">--<small>s</small></strong></div>
-            <div><span class="metric-label" id="prefill-label">PREFILL</span><strong id="prefill">--<small>tok/s</small></strong></div>
-            <div><span class="metric-label">ELAPSED / THIS PAGE</span><strong id="elapsed">--<small>s</small></strong></div>
-          </div>
-          <p class="caption">The last reply's own numbers, from the engine where it times them, else worked out by steth. They never feed the model's speed.</p>
-        </section>
-        <section class="sheet">
-          <div class="chart-heading"><h2>Decode speed</h2><span id="speed-now">-- tok/s</span></div>
-          <svg id="speed-chart" class="chart" viewBox="0 0 440 145" role="img" aria-label="Decode speed over the last two minutes"></svg>
-          <div class="chart-axis"><span>LAST 2 MINUTES</span><span>NOW</span></div>
-          <p class="caption" id="speed-caption"></p>
-        </section>
-        <section class="engine-details">
+      <section class="sheet pulse" aria-label="This model, measured">
+        <div class="section-heading"><div><span class="section-number">04</span><h2>Pulse</h2></div><span id="phase" class="pill">NO MODEL</span></div>
+        <div class="metrics" title="The last reply's own numbers, from the engine where it times them, else worked out by steth. They never feed the model's speed.">
+          <div><span class="metric-label" id="decode-label">DECODE</span><strong id="decode">--<small>tok/s</small></strong></div>
+          <div><span class="metric-label" id="prefill-label">PREFILL</span><strong id="prefill">--<small>tok/s</small></strong></div>
+          <div><span class="metric-label">FIRST TEXT / STETH</span><strong id="first-text">--<small>s</small></strong></div>
+          <div><span class="metric-label">ELAPSED / PAGE</span><strong id="elapsed">--<small>s</small></strong></div>
+        </div>
+        <div class="chart-heading"><h2>MODEL DECODE, LAST 2 MINUTES</h2><span id="speed-now">-- tok/s</span></div>
+        <svg id="speed-chart" class="chart" viewBox="0 0 440 64" role="img" aria-label="Decode speed over the last two minutes"></svg>
+        <p class="caption" id="speed-caption"></p>
+        <div class="engine-details">
           <div class="engine-row"><span>Model state</span><strong id="model-state">--</strong></div>
           <div class="engine-row"><span>Running / waiting</span><strong id="lanes">--</strong></div>
           <div class="engine-row"><span>KV held / context</span><strong id="context">--</strong></div>
           <div class="engine-row"><span>Engine</span><strong id="engine-at">--</strong></div>
           <details id="log-box"><summary>Engine log <span id="log-state"></span></summary><pre id="engine-log"></pre></details>
-        </section>
-      </aside>
-    </div>
-  </section>
-
+        </div>
+      </section>
+    </section>
+  </div>
   <footer><span>STETH / LOCAL INFERENCE</span><span>Read from each engine. Marked where derived.</span></footer>
 </main>
 <div class="scrim" id="scrim"></div>
@@ -1005,7 +1008,7 @@ let actionsOn = null;
 const CONTROLS_MS = 5000, LAUNCH_MS = 2000;
 /* The speed chart's frame, in its viewBox's units; its floor in tok/s, so
    a slow model's line does not fill the chart. */
-const CHART = { width: 440, top: 12, bottom: 129, rows: 3, floor: 5, headroom: 1.15 };
+const CHART = { width: 440, top: 16, bottom: 58, rows: 2, floor: 5, headroom: 1.15 };
 /* The generation settings the page accepts. */
 const TEMPERATURE_MAX = 2, REPLY_TOKENS_MAX = 32768;
 /* The conversation follows a reply only while its foot is in view. */
@@ -1097,7 +1100,11 @@ function fillSelect(select, groups, value) {
 
 function drawWorkspace() {
   $("mode").textContent = actionsOn == null ? "" : actionsOn ? "LOCAL ONLY" : "MONITOR ONLY";
+  $("mode").title = actionsOn == null ? "" : actionsOn
+    ? "Prompts and actions go only to the engines steth reads, and only from this machine."
+    : "steth listens beyond this machine, so it only reads; prompts and actions are off.";
   $("workspace").hidden = !actionsOn;
+  $("layout").classList.toggle("solo", !actionsOn);
   if (!actionsOn) return;
   const all = choices();
   if (!all.some((c) => c.key === chosenKey)) chosenKey = (all.find(loaded) ?? all[0])?.key ?? null;
@@ -1126,7 +1133,7 @@ function drawToolbar(all, choice) {
 
 function drawLaunch() {
   const launching = profiles.length > 0;
-  for (const id of ["launch-divider", "profile-field", "start", "stop-engine", "log-box"]) $(id).hidden = !launching;
+  for (const id of ["launch-row", "log-box"]) $(id).hidden = !launching;
   $("profile-model-field").hidden = true;
   if (!launching) return;
   if (!profiles.some((p) => p.name === chosenProfile)) chosenProfile = profiles[0].name;
@@ -1139,8 +1146,8 @@ function drawLaunch() {
   }
   $("start").disabled = p.running || busy.launch !== "";
   $("stop-engine").disabled = !p.running || busy.launch !== "";
-  $("start").firstChild.textContent = busy.launch === "Starting" ? "Starting… " : "Start engine ";
-  $("stop-engine").textContent = busy.launch === "Stopping" ? "Stopping…" : "Stop engine";
+  $("start").firstChild.textContent = busy.launch === "Starting" ? "Starting… " : "Start ";
+  $("stop-engine").textContent = busy.launch === "Stopping" ? "Stopping…" : "Stop";
 
   $("log-state").textContent = `/ ${p.name}, ${p.running ? `running${p.pid ? ` as pid ${p.pid}` : ""}${p.model ? ` with ${baseName(p.model)}` : ""}`
     : p.exit ? `ended: ${p.exit}` : "not started"}`;
@@ -1245,7 +1252,7 @@ function drawSpeed(m) {
     out += `<path d="${path}"/><circle r="3" cx="${x(last.time).toFixed(1)}" cy="${y(last.decode_tps).toFixed(1)}"/>`;
   } else {
     const why = m ? `Nothing decoded in two minutes, or ${m.engine} does not report it` : "No model loaded";
-    out += `<text class="none" x="${width / 2}" y="76" text-anchor="middle">${escape(why)}</text>`;
+    out += `<text class="none" x="${width / 2}" y="41" text-anchor="middle">${escape(why)}</text>`;
   }
   $("speed-chart").innerHTML = out;
   $("speed-now").textContent = m?.decode_tps == null ? "-- tok/s" : tps(m.decode_tps);
@@ -1273,10 +1280,10 @@ const renderBody = (text) => text.split("```").map((part, i) => (i % 2
 
 function welcome(choice) {
   const ready = choice != null && loaded(choice);
-  return `<div class="welcome"><span class="orbit" aria-hidden="true">*</span>
+  return `<div class="welcome">
     <p class="eyebrow">${choice ? escape(`${choice.engine} · ${choice.name}`.toUpperCase()) : "NO MODEL YET"}</p>
     <h3>${choice == null ? "Nothing to talk to yet." : ready ? "Ask it something." : "Load it to talk to it."}</h3>
-    <p>${choice == null ? "Load a model or start an engine above." : "The prompt goes to this model alone.<br>The reply's own numbers appear in its pulse."}</p></div>`;
+    <p>${choice == null ? "Load a model or start an engine above." : "The prompt goes to this model alone; the reply's own numbers appear in its pulse."}</p></div>`;
 }
 
 function message(t) {
