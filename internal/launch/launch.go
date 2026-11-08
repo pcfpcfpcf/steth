@@ -34,6 +34,7 @@ const (
 // concurrent use.
 type Launcher struct {
 	profiles []Profile
+	roots    []string // the config's models, scanned at each Start and Status
 	grace    time.Duration
 
 	mu sync.Mutex
@@ -54,8 +55,11 @@ type run struct {
 
 // Status is a profile and its child, if it has run.
 type Status struct {
-	Name    string     `json:"name"`
-	Models  []string   `json:"models"`
+	Name   string   `json:"name"`
+	Models []string `json:"models"` // the choices for {model}
+	// Files are the choices with their size, for a profile whose choices
+	// are the config's model files; null for one with its own models.
+	Files   []File     `json:"files"`
 	Running bool       `json:"running"`
 	Model   string     `json:"model,omitempty"`
 	PID     int        `json:"pid,omitempty"` // only while running
@@ -64,22 +68,24 @@ type Status struct {
 	Log     []string   `json:"log"`            // its last lines of stdout and stderr together, oldest first
 }
 
-func New(profiles []Profile) *Launcher {
-	return &Launcher{profiles: profiles, grace: stopGrace, runs: map[string]*run{}}
+func New(c Config) *Launcher {
+	return &Launcher{profiles: c.Launch, roots: c.Models, grace: stopGrace, runs: map[string]*run{}}
 }
 
 // Start starts the named profile with model, which must be one of its
-// Models, or "" when it has none. It refuses a profile already running
-// under this launcher, and a command whose --port already answers on
-// 127.0.0.1.
+// Models, or of the model files under the config's models now for a
+// profile that lists none, or "" when its command has no {model}. It
+// refuses a profile already running under this launcher, and a command
+// whose --port already answers on 127.0.0.1.
 func (l *Launcher) Start(name, model string) error {
+	files := l.scan()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	profile, err := l.profile(name)
 	if err != nil {
 		return err
 	}
-	if err := profile.checkModel(model); err != nil {
+	if err := profile.checkModel(model, choices(profile, files)); err != nil {
 		return err
 	}
 	if r := l.runs[name]; r != nil && r.exit == "" {
@@ -155,11 +161,15 @@ func (l *Launcher) StopAll() {
 
 // Status is every profile, in config order, and its child if any.
 func (l *Launcher) Status() []Status {
+	files := l.scan()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	statuses := make([]Status, 0, len(l.profiles))
 	for _, p := range l.profiles {
-		s := Status{Name: p.Name, Models: append([]string{}, p.Models...), Log: []string{}}
+		s := Status{Name: p.Name, Models: choices(p, files), Log: []string{}}
+		if p.takesFiles() {
+			s.Files = append([]File{}, files...)
+		}
 		if r := l.runs[p.Name]; r != nil {
 			started := r.started
 			s.Running = r.exit == ""
@@ -171,6 +181,23 @@ func (l *Launcher) Status() []Status {
 		statuses = append(statuses, s)
 	}
 	return statuses
+}
+
+// scan lists the model files under the config's models, or none without
+// a profile that takes them. It reads the disk, so it runs outside l.mu.
+func (l *Launcher) scan() []File {
+	if !slices.ContainsFunc(l.profiles, Profile.takesFiles) {
+		return nil
+	}
+	return Scan(l.roots)
+}
+
+// choices are what p can start with: its own models, or the model files.
+func choices(p Profile, files []File) []string {
+	if p.takesFiles() {
+		return paths(files)
+	}
+	return append([]string{}, p.Models...)
 }
 
 func (l *Launcher) profile(name string) (Profile, error) {

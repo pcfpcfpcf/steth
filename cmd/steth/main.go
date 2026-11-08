@@ -85,7 +85,7 @@ func main() {
 	listen := flag.String("listen", defaultListen, "address to serve the page on")
 	flag.Var(&sources, "target", "an engine discovery cannot find, such as one on another machine, as ENGINE=URL; repeat for more")
 	find := flag.Bool("discover", true, "find the engines running on this machine")
-	config := flag.String("config", "", "a JSON file of launch profiles, the engines the page may start")
+	config := flag.String("config", "", "a JSON file of launch profiles, the engines the page may start, and the places of model files")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
@@ -157,12 +157,12 @@ func actionsFor(listen, config string, registry *discover.Registry) (*web.Action
 		Client: &http.Client{},
 	}
 	if config != "" {
-		profiles, err := launch.Load(config)
+		c, err := launch.Load(config)
 		if err != nil {
 			return nil, err
 		}
-		actions.Launcher = launch.New(profiles)
-		log.Printf("steth: %d launch profile(s) from %s", len(profiles), config)
+		actions.Launcher = launch.New(c)
+		log.Printf("steth: %d launch profile(s) and %d model place(s) from %s", len(c.Launch), len(c.Models), config)
 	}
 	return actions, nil
 }

@@ -82,7 +82,7 @@ func helper(t *testing.T, name string, args ...string) Profile {
 }
 
 func launcher(t *testing.T, profiles ...Profile) *Launcher {
-	l := New(profiles)
+	l := New(Config{Launch: profiles})
 	l.grace = shortGrace
 	t.Cleanup(l.StopAll)
 	return l
@@ -142,11 +142,11 @@ func TestLoadReadsProfiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Profile{
+	want := Config{Launch: []Profile{
 		{Name: "geode", Command: []string{"geode", "serve", "{model}", "--port", "8080"},
 			Models: []string{"a.gguf", "b.gguf"}, Dir: "/srv/geode", Env: map[string]string{"HOME": "/home/me"}},
 		{Name: "llama router", Command: []string{"llama", "serve", "--port", "9931"}},
-	}
+	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v\nexpected %+v", got, want)
 	}
@@ -337,7 +337,7 @@ func TestStartRefuses(t *testing.T) {
 	if err := l.Stop("nobody"); err == nil || !strings.Contains(err.Error(), `no profile named "nobody"`) {
 		t.Errorf("expected Stop to refuse an unknown profile; got %v", err)
 	}
-	if err := New(nil).Start("x", ""); err == nil || !strings.Contains(err.Error(), "the config file has none") {
+	if err := New(Config{}).Start("x", ""); err == nil || !strings.Contains(err.Error(), "the config file has none") {
 		t.Errorf("expected a launcher without profiles to say so; got %v", err)
 	}
 }

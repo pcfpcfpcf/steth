@@ -1072,6 +1072,17 @@ const loaded = (choice) => choice.model != null && choice.model.state !== "sleep
 const chosen = () => choices().find((c) => c.key === chosenKey);
 const baseName = (path) => path.slice(path.search(/[^/\\]*$/));
 
+// modelLabels names each choice by its file name, or its whole path where
+// two share a name, with its size on disk when steth found it as a file.
+function modelLabels(p) {
+  const names = p.models.map(baseName);
+  const bytes = new Map((p.files || []).map((f) => [f.path, f.bytes]));
+  return p.models.map((m, i) => {
+    const name = names.indexOf(names[i]) === names.lastIndexOf(names[i]) ? names[i] : m;
+    return [m, bytes.has(m) ? `${name} · ${gb(bytes.get(m))}` : name];
+  });
+}
+
 let chosenKey = null, chosenProfile = null;
 /* The model picked for each launch profile with {model}. */
 const profileModels = new Map();
@@ -1139,12 +1150,14 @@ function drawLaunch() {
   if (!profiles.some((p) => p.name === chosenProfile)) chosenProfile = profiles[0].name;
   const p = profiles.find((x) => x.name === chosenProfile);
   fillSelect($("profile"), [[null, profiles.map((x) => [x.name, x.running ? `${x.name} · running` : x.name])]], chosenProfile);
-  if (p.models.length > 0 && !p.running) {
+  // A profile with files takes the model files steth found; it may find none.
+  const noFiles = p.files != null && p.models.length === 0;
+  if ((p.models.length > 0 || noFiles) && !p.running) {
     $("profile-model-field").hidden = false;
-    const pick = p.models.includes(profileModels.get(p.name)) ? profileModels.get(p.name) : p.models[0];
-    fillSelect($("profile-model"), [[null, p.models.map((m) => [m, baseName(m)])]], pick);
+    const pick = p.models.includes(profileModels.get(p.name)) ? profileModels.get(p.name) : p.models[0] ?? "";
+    fillSelect($("profile-model"), [[null, noFiles ? [["", "no model files found"]] : modelLabels(p)]], pick);
   }
-  $("start").disabled = p.running || busy.launch !== "";
+  $("start").disabled = p.running || noFiles || busy.launch !== "";
   $("stop-engine").disabled = !p.running || busy.launch !== "";
   $("start").firstChild.textContent = busy.launch === "Starting" ? "Starting… " : "Start ";
   $("stop-engine").textContent = busy.launch === "Stopping" ? "Stopping…" : "Stop";

@@ -80,17 +80,20 @@ narrow screen it follows the models.
   *Unload* button for the one picked; vLLM's unload
   is its sleep, which also needs `--enable-sleep-mode`. A model whose engine has no
   controls gets no button.
-- **Start and stop engines.** `--config steth.json` names launch profiles:
+- **Start and stop engines.** `--config steth.json` names launch profiles
+  and where model files are:
 
-      {"launch": [
-        {"name": "geode", "command": ["geode", "serve", "{model}", "--port", "8080"],
-         "models": ["/models/Qwen3.5-9B-Q4_K_M.gguf"]},
+      {"models": ["/models", "/data/Qwen3.5-9B-Q4_K_M.gguf"],
+       "launch": [
+        {"name": "geode", "command": ["geode", "serve", "{model}", "--port", "8080"]},
         {"name": "llama router", "command": ["llama", "serve", "--models-dir", "/models", "--port", "9931"],
          "dir": "/srv/llama", "env": {"LLAMA_CACHE": "/srv/cache"}}
       ]}
 
-  The toolbar's *Engine* picks a profile and *With* its `{model}`; the
-  engine's log is under the pulse. steth refuses to start a
+  The toolbar's *Engine* picks a profile and *With* its `{model}`: the
+  profile's own `models`, or else every `.gguf` file under the top-level
+  `models` (directories and files), found again at each look and shown
+  with its size. The engine's log is under the pulse. steth refuses to start a
   profile already running or whose `--port` already answers, keeps each
   engine's last 120 log lines, stops only engines it started, and stops all
   of them when it exits. A started engine appears like any other, through

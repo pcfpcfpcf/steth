@@ -4,6 +4,20 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **Model files come from places in the config,** not only from each
+  profile's list. Asked for by the owner: a model should be added by its
+  directory or file. A top-level `models` lists directories and `.gguf`
+  files; a `{model}` profile that lists none takes every model file under
+  them, found again at each look (30 ms for the owner's 10 files, 150 GB),
+  so a copied-in file shows without a restart. The page still never sends
+  a path steth did not list. A split model is one entry with all its
+  parts' bytes; `mmproj` files are left out, being no model on their own.
+  Profiles keep their own `models` for engines that take names, not files
+  (vLLM). Loading a file into an engine already running waits on that
+  engine having a load route for paths; Ollama is left out, as it needs a
+  model made from the file first. Checked live: geode started from a
+  scanned file, a path not listed refused, then stopped.
+
 - **The page in two columns.** Asked for by the owner, who did not like
   the workspace stacked under the box. The pools and models go left; the
   toolbar, conversation and pulse go right, sticky and the viewport's

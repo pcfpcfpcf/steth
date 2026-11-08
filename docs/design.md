@@ -60,7 +60,7 @@ Each lives in its own package and is replaceable alone.
 | `internal/discover` | finds engines from sockets, processes and probes; keeps the source list | `Find`, `Registry` |
 | `internal/collector` | polls whichever sources there are on a monotonic schedule, merges readings, keeps the latest state and two minutes of speeds | `New(sources func)`, `Run(ctx)`, `State()` |
 | `internal/chat` | sends one prompt to a model steth knows, streams the reply back, and reports that reply's numbers | `Send(ctx, target, request, w) (Reply, error)` |
-| `internal/launch` | starts and stops engine processes from the profiles in the config file; owns only its children; keeps each one's recent log | `New(profiles)`, `Start(name, model)`, `Stop(name)`, `Status()` |
+| `internal/launch` | reads the config file; lists the model files under its `models`; starts and stops engine processes from its profiles; owns only its children; keeps each one's recent log | `Load(path)`, `New(config)`, `Scan(roots)`, `Start(name, model)`, `Stop(name)`, `Status()` |
 | `internal/web` | serves the embedded page and the state as JSON; takes actions from its own page only | `Handler(state func, *Actions) http.Handler`, `Loopback(listen)` |
 | `cmd/steth` | flags, the config file, the engine list, and wiring | the binary |
 
@@ -104,13 +104,18 @@ browser never supplies a command:
 
 ```json
 {
+  "models": ["C:/models", "D:/more/Qwen3.5-9B-Q4_K_M.gguf"],
   "launch": [
     {
       "name": "geode",
       "command": ["C:/geode/bin/geode.exe", "serve", "{model}", "--port", "8080", "--lanes", "1"],
-      "models": ["C:/geode/models/Qwen3.5-9B-Q4_K_M.gguf"],
       "dir": "C:/geode",
       "env": {"HOME": "C:/msys64/home/me"}
+    },
+    {
+      "name": "vllm",
+      "command": ["vllm", "serve", "{model}", "--port", "8000"],
+      "models": ["Qwen/Qwen3-8B"]
     },
     {
       "name": "llama router",
@@ -120,8 +125,17 @@ browser never supplies a command:
 }
 ```
 
-`{model}` is replaced by the chosen entry of `models`; a profile without it
-starts as written. Before a start, steth refuses a profile it already runs,
+`{model}` is replaced by the chosen model; a profile without it starts as
+written. A profile's own `models` are its choices; one that lists none takes
+the model files under the file's `models`, a list of directories and `.gguf`
+files. steth looks through each directory four levels deep, skipping hidden
+entries, and lists the `.gguf` files with their size: a split model once, by
+its first part, with all its parts' bytes; a vision projector (`mmproj*`)
+not at all; a link as the file it points to, as in a Hugging Face cache. It
+looks again at every read, so a file copied in shows without a restart, and
+lists at most 1,000. Every entry must be there when steth starts; one gone
+later is skipped. A start takes only a choice listed now, never a path from
+the page. Before a start, steth refuses a profile it already runs,
 and one whose command names a port (`--port N`) that already answers on this
 machine: the engine is running already, started some other way. It stops
 only a process it started, with that process's own children, and stops all
@@ -185,7 +199,7 @@ address, steth serves no action routes, and `--config` is refused.
 | `GET /api/v1/controls` | — | `[{engine, endpoint, models, error?}]`: every engine with controls and the models it could load or unload |
 | `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`; 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
-| `GET /api/v1/launch` | — | every profile in config order: `{name, models, running, model?, pid?, started?, exit?, log}` |
+| `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, running, model?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null |
 | `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without `--config` |
 
 Errors are `{"error": message}`.
