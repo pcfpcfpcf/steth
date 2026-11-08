@@ -9,3 +9,7 @@ and the metrics `vllm/v1/metrics/loggers.py` registers, as
   one waiting, 150 tokens generated between them, an eighth of a 65,536-token
   KV cache in use.
 - `sleeping.txt`: the engine asleep, its weights offloaded.
+- `is_sleeping.json`, `sleep.json`, `wake_up.json`: the answers of the
+  routes `vllm/entrypoints/serve/dev/sleep/api_router.py` adds when
+  `VLLM_SERVER_DEV_MODE=1`, to a server awake, put to sleep at level 1, and
+  woken.

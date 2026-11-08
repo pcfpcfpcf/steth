@@ -5,9 +5,11 @@ package enginetest
 import (
 	"encoding/json"
 	"flag"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -16,17 +18,21 @@ var update = flag.Bool("update", false, "rewrite the expected JSON from what the
 
 // Server answers each path it was given with the file it names, and any
 // other path with 404. A path with a query matches only that query; one
-// without matches any.
+// without matches any. It keeps every POST it is sent.
 type Server struct {
 	*httptest.Server
 	t      *testing.T
 	mu     sync.Mutex
 	bodies map[string][]byte
+	// posted is the status a POST is answered with; sent, each POST's path
+	// and body.
+	posted int
+	sent   []string
 }
 
 // Serve starts a Server answering `fixtures`, path to file.
 func Serve(t *testing.T, fixtures map[string]string) *Server {
-	s := &Server{t: t, bodies: map[string][]byte{}}
+	s := &Server{t: t, bodies: map[string][]byte{}, posted: http.StatusOK}
 	for path, file := range fixtures {
 		s.Answer(path, file)
 	}
@@ -47,17 +53,40 @@ func (s *Server) Answer(path, file string) {
 	s.bodies[path] = body
 }
 
+// AnswerPosts makes every POST answer with `status`, as an engine that
+// refuses one does.
+func (s *Server) AnswerPosts(status int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.posted = status
+}
+
+// Posted is every POST the server was sent, as "path?query body", oldest
+// first.
+func (s *Server) Posted() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.sent)
+}
+
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	body, ok := s.bodies[r.URL.RequestURI()]
 	if !ok {
 		body, ok = s.bodies[r.URL.Path]
 	}
+	status := http.StatusOK
+	if ok && r.Method == http.MethodPost {
+		sent, _ := io.ReadAll(r.Body)
+		s.sent = append(s.sent, r.URL.RequestURI()+" "+string(sent))
+		status = s.posted
+	}
 	s.mu.Unlock()
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
+	w.WriteHeader(status)
 	w.Write(body)
 }
 

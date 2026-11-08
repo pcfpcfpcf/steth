@@ -18,3 +18,12 @@ files are that model read through `?model=` with `autoload=false`.
 `router.states.models.json` is not recorded: it is written from the server
 source at commit a469940 (`get_router_models`) for the states not seen
 here, a model sleeping and one loading.
+
+`router.available.models.json` and `router.load*.json` are recorded from
+the same build as a router over a directory of Qwen3.5-0.8B-Q8_0 alone
+(`--no-models-autoload`, CPU only); it also lists a model from the Hugging
+Face cache. `router.load.json` is the answer to a load and to an unload
+alike; `router.load.running.json` (400) the answer to loading a model
+already running; `router.load.unknown.json` (404) to loading a name it does
+not know, where the server source at commit d4abd573f says
+`model is not found`.
