@@ -111,7 +111,7 @@ func TestPlaceRepeatsWithItsFlag(t *testing.T) {
 		{[]string{"/a", "/b.gguf"}, []string{"geode", "serve", "m", "--models-dir", "/a", "--models-dir", "/b.gguf",
 			"--x=/a/y", "--x=/b.gguf/y", "--port", "1"}},
 	} {
-		if got := p.argv("m", c.places); !reflect.DeepEqual(got, c.want) {
+		if got := p.argv("m", c.places, 0); !reflect.DeepEqual(got, c.want) {
 			t.Errorf("places %q: got %q\nexpected %q", c.places, got, c.want)
 		}
 	}

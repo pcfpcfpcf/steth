@@ -162,6 +162,8 @@ func TestLoadSaysWhatWouldWork(t *testing.T) {
 		{`{"launch": [{"name": "a", "command": ["x"]}, {"name": "a", "command": ["y"]}]}`, `two profiles are named "a"`},
 		{`{"launch": [{"name": "a", "command": ["{place}"]}]}`, `starts its command with {place}`},
 		{`{"launch": [{"name": "a", "command": ["x"], "models": ["m"]}]}`, `lists models but its command has no {model}`},
+		{`{"launch": [{"name": "a", "command": ["x", "--port", "{port}"]}]}`, `has {port} but no "port"`},
+		{`{"launch": [{"name": "a", "command": ["x"], "port": 70000}]}`, `has port 70000; give a number from 1 to 65535`},
 		{`{"launch": []} {}`, "text after the first JSON object"},
 		{`{"launch": [`, "unexpected EOF"},
 	} {
@@ -340,6 +342,32 @@ func TestStartRefuses(t *testing.T) {
 	if err := New(nil, nil).Start("x", ""); err == nil || !strings.Contains(err.Error(), "the config file has none") {
 		t.Errorf("expected a launcher without profiles to say so; got %v", err)
 	}
+}
+
+// {port} is the first port from the profile's that nothing answers on; a
+// profile's port without {port} must be quiet before a start.
+func TestPortIsPickedOrChecked(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	taken := listener.Addr().(*net.TCPAddr).Port
+	picks := helper(t, "picks", "echo", "--port", "{port}")
+	picks.Port = taken
+	fixed := helper(t, "fixed", "echo", "serve")
+	fixed.Port = taken
+	l := launcher(t, picks, fixed)
+
+	if err := l.Start("fixed", ""); err == nil || !strings.Contains(err.Error(), fmt.Sprintf("port %d already answers", taken)) {
+		t.Errorf("a profile whose port answers: got %v; expected a refusal", err)
+	}
+	start(t, l, "picks", "")
+	s := status(t, l, "picks")
+	if s.Port <= taken || s.Port >= taken+portTries {
+		t.Fatalf("picked port %d; expected one after %d, which answers", s.Port, taken)
+	}
+	waitForLine(t, l, "picks", strconv.Itoa(s.Port))
 }
 
 func TestStopAllStopsEveryChild(t *testing.T) {

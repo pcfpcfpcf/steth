@@ -4,6 +4,16 @@ Decisions as they are made, newest first.
 
 ## 2026-11-09
 
+- **`{port}` picks a quiet port at each start,** from the profile's `port`
+  up, 100 at most. A profile that starts an engine wherever this box has
+  room needs it: the owner's geode already holds 8080 and 8082, and a
+  fixed `--port` would be refused. Asking the OS for a free port (`:0`)
+  was rejected: it lands far from the engine's own default, which is where
+  people look. A `port` without `{port}` is where an engine listens that
+  takes no port flag (`ollama serve`), checked quiet like `--port`. Two
+  starts at once may pick the same port before either binds; the second
+  engine then fails and its log says so.
+
 - **A file row says why a running geode cannot open it,** rather than
   *No engine can open it*: geode was started without that file allowed,
   or with no model files allowed. Checked live against geode (branch

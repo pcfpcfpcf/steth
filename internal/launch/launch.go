@@ -29,7 +29,9 @@ const (
 	loopback        = "127.0.0.1"
 	portDialTimeout = 300 * time.Millisecond
 	maxPort         = 65535
-	stoppedExit     = "stopped"
+	// portTries is how many ports from a profile's Port {port} tries.
+	portTries   = 100
+	stoppedExit = "stopped"
 )
 
 // Launcher starts and stops the profiles' processes. It is safe for
@@ -49,6 +51,7 @@ type Launcher struct {
 
 type run struct {
 	model    string
+	port     int // where it listens, when its profile says
 	cmd      *exec.Cmd
 	started  time.Time
 	log      *lineLog
@@ -66,7 +69,8 @@ type Status struct {
 	Files   []library.File `json:"files"`
 	Running bool           `json:"running"`
 	Model   string         `json:"model,omitempty"`
-	PID     int            `json:"pid,omitempty"` // only while running
+	Port    int            `json:"port,omitempty"` // where the last child listens, when its profile says
+	PID     int            `json:"pid,omitempty"`  // only while running
 	Started *time.Time     `json:"started,omitempty"`
 	Exit    string         `json:"exit,omitempty"` // how the last child ended: "exit status 1", "stopped", ...
 	Log     []string       `json:"log"`            // its last lines of stdout and stderr together, oldest first
@@ -85,7 +89,8 @@ func New(profiles []Profile, places func() []string) *Launcher {
 // Models, or of the model files under the config's models now for a
 // profile that lists none, or "" when its command has no {model}. It
 // refuses a profile already running under this launcher, and a command
-// whose --port already answers on 127.0.0.1.
+// whose --port, or a profile whose port without {port}, already answers on
+// 127.0.0.1.
 func (l *Launcher) Start(name, model string) error {
 	files, places := l.scan(), l.places()
 	l.mu.Lock()
@@ -100,11 +105,27 @@ func (l *Launcher) Start(name, model string) error {
 	if r := l.runs[name]; r != nil && r.exit == "" {
 		return fmt.Errorf("%q is already running as pid %d; stop it first", name, r.cmd.Process.Pid)
 	}
-	argv := profile.argv(model, places)
-	if err := refuseAnsweringPort(argv); err != nil {
+	port := profile.Port
+	if profile.takesPort() {
+		if port, err = quietPort(profile.Port); err != nil {
+			return fmt.Errorf("not starting %q: %w", name, err)
+		}
+	}
+	argv := profile.argv(model, places, port)
+	ports, err := namedPorts(argv)
+	if err != nil {
 		return fmt.Errorf("not starting %q: %w", name, err)
 	}
-	r := &run{model: model, log: &lineLog{}, exited: make(chan struct{})}
+	if !profile.takesPort() && profile.Port > 0 {
+		ports = append(ports, profile.Port)
+	}
+	if err := refuseAnswering(ports); err != nil {
+		return fmt.Errorf("not starting %q: %w", name, err)
+	}
+	if !profile.takesPort() && len(ports) > 0 {
+		port = ports[0]
+	}
+	r := &run{model: model, port: port, log: &lineLog{}, exited: make(chan struct{})}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = profile.Dir
 	cmd.Env = environ(profile.Env)
@@ -182,7 +203,7 @@ func (l *Launcher) Status() []Status {
 		if r := l.runs[p.Name]; r != nil {
 			started := r.started
 			s.Running = r.exit == ""
-			s.Model, s.Started, s.Exit, s.Log = r.model, &started, r.exit, r.log.lines()
+			s.Model, s.Port, s.Started, s.Exit, s.Log = r.model, r.port, &started, r.exit, r.log.lines()
 			if s.Running {
 				s.PID = r.cmd.Process.Pid
 			}
@@ -256,21 +277,35 @@ func environ(env map[string]string) []string {
 	return merged
 }
 
-// refuseAnsweringPort says which port named in argv already answers.
-func refuseAnsweringPort(argv []string) error {
-	ports, err := namedPorts(argv)
-	if err != nil {
-		return err
-	}
+// refuseAnswering says which of ports already answers.
+func refuseAnswering(ports []int) error {
 	for _, port := range ports {
-		address := net.JoinHostPort(loopback, strconv.Itoa(port))
-		conn, err := net.DialTimeout("tcp", address, portDialTimeout)
-		if err == nil {
-			conn.Close()
-			return fmt.Errorf("port %d already answers on %s; stop what listens there, or change the profile's %s", port, loopback, portFlag)
+		if answers(port) {
+			return fmt.Errorf("port %d already answers on %s; stop what listens there, or change the profile's port", port, loopback)
 		}
 	}
 	return nil
+}
+
+// quietPort is the first port from first up that nothing answers on.
+func quietPort(first int) (int, error) {
+	last := min(first+portTries-1, maxPort)
+	for port := first; port <= last; port++ {
+		if !answers(port) {
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("every port from %d to %d already answers on %s; stop something there, or change the profile's port", first, last, loopback)
+}
+
+// answers says whether something listens on port on this machine.
+func answers(port int) bool {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(loopback, strconv.Itoa(port)), portDialTimeout)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // namedPorts reads every "--port N" and "--port=N" in argv.
