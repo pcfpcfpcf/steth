@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/engine/ollama"
 	"github.com/pcfpcfpcf/steth/internal/engine/vllm"
 	"github.com/pcfpcfpcf/steth/internal/launch"
+	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/web"
 )
 
@@ -86,6 +88,7 @@ func main() {
 	flag.Var(&sources, "target", "an engine discovery cannot find, such as one on another machine, as ENGINE=URL; repeat for more")
 	find := flag.Bool("discover", true, "find the engines running on this machine")
 	config := flag.String("config", "", "a JSON file of launch profiles, the engines the page may start, and the places of model files")
+	placesFile := flag.String("places", defaultPlacesFile(), `the file that keeps the places of model files added from the page; "" keeps them only while steth runs`)
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
@@ -111,7 +114,7 @@ func main() {
 	c := collector.New(registry.Sources, readTimeout)
 	go c.Run(ctx, pollInterval)
 
-	actions, err := actionsFor(*listen, *config, registry)
+	actions, err := actionsFor(*listen, *config, *placesFile, registry)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "steth: %v\n", err)
 		os.Exit(2)
@@ -138,7 +141,7 @@ func main() {
 
 // actionsFor is what the page may do: on a loopback address, chat, load and
 // unload, and with a config file start and stop engines; elsewhere nothing.
-func actionsFor(listen, config string, registry *discover.Registry) (*web.Actions, error) {
+func actionsFor(listen, config, placesFile string, registry *discover.Registry) (*web.Actions, error) {
 	if !web.Loopback(listen) {
 		if config != "" {
 			return nil, fmt.Errorf("--config needs a loopback --listen address: steth takes actions only from this machine")
@@ -156,15 +159,34 @@ func actionsFor(listen, config string, registry *discover.Registry) (*web.Action
 		},
 		Client: &http.Client{},
 	}
+	var c launch.Config
 	if config != "" {
-		c, err := launch.Load(config)
-		if err != nil {
+		var err error
+		if c, err = launch.Load(config); err != nil {
 			return nil, err
 		}
-		actions.Launcher = launch.New(c)
-		log.Printf("steth: %d launch profile(s) and %d model place(s) from %s", len(c.Launch), len(c.Models), config)
 	}
+	places, err := library.Open(c.Models, placesFile)
+	if err != nil {
+		return nil, err
+	}
+	actions.Places = places
+	if config != "" {
+		actions.Launcher = launch.New(c.Launch, places.Paths)
+		log.Printf("steth: %d launch profile(s) from %s", len(c.Launch), config)
+	}
+	log.Printf("steth: %d place(s) of model files", len(places.All()))
 	return actions, nil
+}
+
+// defaultPlacesFile is steth's file in the user's config directory, or ""
+// where there is none.
+func defaultPlacesFile() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "steth", "places.json")
 }
 
 // discoverEvery looks for engines again every discoverInterval until ctx

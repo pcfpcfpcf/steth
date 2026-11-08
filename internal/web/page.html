@@ -165,6 +165,38 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 
 /* ---- the models, one card each ---- */
 .models { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+
+/* ---- model files: the places, a directory browser, the files found ---- */
+.places { display: flex; flex-wrap: wrap; gap: 8px; }
+.places:not(:empty) { margin-bottom: 14px; }
+.place { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; border: 1px solid var(--line); border-radius: 999px; padding: 2px 2px 2px 12px; font: 11px var(--mono); }
+.place code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place small { color: var(--muted); font-size: 9px; letter-spacing: .1em; padding: 6px 10px 6px 6px; }
+.place button { padding: 5px 9px; font-size: 11px; }
+.browser { border: 1px solid var(--line); border-radius: 7px; background: var(--page); margin-bottom: 14px; }
+.browser-head { display: flex; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.browser-head input { flex: 1; min-width: 180px; font: 12px var(--mono); padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); }
+.browser-head .secondary { padding: 7px 12px; font-size: 12px; }
+.browse-list { list-style: none; margin: 0; padding: 4px 0; max-height: 280px; overflow-y: auto; scrollbar-width: thin; }
+.browse-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 8px; font: 12px var(--mono); }
+.browse-list li:hover { background: var(--well); }
+.browse-list .dir { flex: 1; background: none; padding: 7px 4px; text-align: left; border-radius: 0; color: var(--ink); }
+.browse-list .dir::before { content: "\25B8  "; color: var(--muted); }
+.browse-list .browse-file { flex: 1; padding: 7px 4px; color: var(--mint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browse-list small { color: var(--muted); white-space: nowrap; }
+.browse-list li button:not(.dir) { padding: 4px 9px; font-size: 11px; }
+.file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.file-row:first-child { border-top: 0; padding-top: 0; }
+.file-name { min-width: 0; }
+.file-name b { display: block; font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-name small { display: block; font: 10px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.file-size { font: 11px var(--mono); color: var(--muted); white-space: nowrap; }
+.file-acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.file-acts button { padding: 6px 10px; font-size: 11px; }
+.file-state { font: 10px var(--mono); letter-spacing: .06em; color: var(--mint); white-space: nowrap; }
+.file-state.failed { color: var(--accent); white-space: normal; }
+.file-state.quiet { color: var(--muted); }
+.browser .caption.error { color: var(--accent); }
 .model {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 14px;
   padding: 14px 16px; border-radius: 7px; border: 1px solid var(--line); background: var(--sheet); text-align: left;
@@ -331,6 +363,8 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
   .tool-row button { flex: 1; }
   .metrics { grid-template-columns: 1fr 1fr; }
   .engine-details { grid-template-columns: 1fr; }
+  .file-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .file-acts { grid-column: 1 / -1; justify-content: flex-start; }
   .composer-footer > span { display: none; }
   footer { flex-direction: column; }
 }
@@ -380,6 +414,25 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
           <p class="nothing" id="no-models" hidden>No model is loaded.</p>
         </div>
       </section>
+
+      <section class="sheet" id="library" hidden>
+        <div class="section-heading"><div><span class="section-number">03</span><h2>Model files</h2></div><button id="add-place" class="text-button">Add a place</button></div>
+        <div class="sheet-body">
+          <div class="places" id="places"></div>
+          <div class="browser" id="browser" hidden>
+            <form class="browser-head" id="browse-form">
+              <button type="button" id="browse-up" class="text-button" title="Up one directory" aria-label="Up one directory">&uarr;</button>
+              <input id="browse-dir" aria-label="Directory" spellcheck="false" autocomplete="off">
+              <button type="button" id="add-dir" class="secondary">Add this directory</button>
+              <button type="button" id="browse-close" class="text-button">Close</button>
+            </form>
+            <ul class="browse-list" id="browse-list"></ul>
+            <p class="caption" id="browse-note"></p>
+          </div>
+          <div class="files" id="files"></div>
+          <p class="nothing" id="no-files" hidden></p>
+        </div>
+      </section>
     </div>
 
     <section class="work-col" id="workspace" hidden>
@@ -397,7 +450,7 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
       </div>
       <p id="notice" role="status"></p>
       <section class="sheet chat">
-        <div class="section-heading"><div><span class="section-number">03</span><h2>Conversation</h2></div><button id="clear" class="text-button">New chat</button></div>
+        <div class="section-heading"><div><span class="section-number">04</span><h2>Conversation</h2></div><button id="clear" class="text-button">New chat</button></div>
         <div id="messages" class="messages" role="log" aria-label="Conversation"></div>
         <form id="composer" class="composer">
           <textarea id="prompt" rows="2" placeholder="Ask this model something" aria-label="Message"></textarea>
@@ -413,7 +466,7 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
         </details>
       </section>
       <section class="sheet pulse" aria-label="This model, measured">
-        <div class="section-heading"><div><span class="section-number">04</span><h2>Pulse</h2></div><span id="phase" class="pill">NO MODEL</span></div>
+        <div class="section-heading"><div><span class="section-number">05</span><h2>Pulse</h2></div><span id="phase" class="pill">NO MODEL</span></div>
         <div class="metrics" title="The last reply's own numbers, from the engine where it times them, else worked out by steth. They never feed the model's speed.">
           <div><span class="metric-label" id="decode-label">DECODE</span><strong id="decode">--<small>tok/s</small></strong></div>
           <div><span class="metric-label" id="prefill-label">PREFILL</span><strong id="prefill">--<small>tok/s</small></strong></div>
@@ -1031,6 +1084,7 @@ async function getAction(path) {
 }
 
 let controls = [], profiles = [];
+let lib = { places: [], files: [] };
 
 async function refreshControls() {
   try {
@@ -1051,6 +1105,14 @@ async function refreshLaunch() {
 async function pollLaunch() {
   await refreshLaunch();
   setTimeout(pollLaunch, LAUNCH_MS);
+}
+async function refreshLibrary() {
+  try { lib = (await getAction("/api/v1/library")) || { places: [], files: [] }; } catch (e) { /* keep the last */ }
+  drawLibrary();
+}
+async function pollLibrary() {
+  await refreshLibrary();
+  setTimeout(pollLibrary, LAUNCH_MS);
 }
 
 /* ---- the toolbar: a model to talk to, an engine to start ---- */
@@ -1087,7 +1149,7 @@ let chosenKey = null, chosenProfile = null;
 /* The model picked for each launch profile with {model}. */
 const profileModels = new Map();
 /* The action under way, as its button says it; "" for none. */
-const busy = { model: "", launch: "" };
+const busy = { model: "", launch: "", library: "" };
 
 function notice(text, error = false) {
   $("notice").textContent = text;
@@ -1110,6 +1172,7 @@ function fillSelect(select, groups, value) {
 }
 
 function drawWorkspace() {
+  drawLibrary();
   $("mode").textContent = actionsOn == null ? "" : actionsOn ? "LOCAL ONLY" : "MONITOR ONLY";
   $("mode").title = actionsOn == null ? "" : actionsOn
     ? "Prompts and actions go only to the engines steth reads, and only from this machine."
@@ -1272,6 +1335,149 @@ function drawSpeed(m) {
   $("speed-caption").textContent = m == null ? "" : `As ${m.engine} reports it${m.fidelity?.decode_tps === "derived"
     ? ", worked out by steth from its counts" : ""}, for every request it served, not only this page's.`;
 }
+
+/* ---- model files: places picked on the page, the files under them, and
+   what each engine that loads by file does with each ---- */
+let browsing = null, browseError = "";
+
+const portOf = (endpoint) => { try { return `:${new URL(endpoint).port || "80"}`; } catch (e) { return endpoint; } };
+const engineAt = (c) => `${c.engine} ${portOf(c.endpoint)}`;
+
+/* The place a file was found under, to show the path below it. */
+function placeOf(path) {
+  return lib.places.map((p) => p.path).filter((p) => path === p || path.startsWith(p.replace(/[/\\]$/, "") + "/") || path.startsWith(p + "\\"))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
+function fileButton(act, label, data, primary = false) {
+  const attrs = Object.entries(data).map(([k, v]) => `data-${k}="${escape(v)}"`).join(" ");
+  return `<button class="${primary ? "primary" : "secondary"}" data-act="${act}" ${attrs} ${busy.library ? "disabled" : ""}>${escape(label)}</button>`;
+}
+
+/* What can be done with one file: each engine that may open it says what it
+   does with it; else each profile that takes model files can start with it. */
+function fileActions(f) {
+  const out = [];
+  const openers = controls.filter((c) => c.files);
+  for (const c of openers) {
+    const cf = c.files.find((x) => x.path === f.real || x.path === f.path);
+    if (!cf) continue;
+    const at = { engine: c.engine, endpoint: c.endpoint };
+    if (cf.state === "ready") out.push(`<span class="file-state">IN ${escape(engineAt(c).toUpperCase())}</span>`,
+      cf.model ? fileButton("unload", "Unload", { ...at, model: cf.model }) : "");
+    else if (cf.state === "loading") out.push(`<span class="file-state">LOADING IN ${escape(engineAt(c).toUpperCase())}…</span>`);
+    else if (cf.state === "unloading") out.push(`<span class="file-state quiet">UNLOADING FROM ${escape(engineAt(c).toUpperCase())}…</span>`);
+    else {
+      if (cf.state === "failed") out.push(`<span class="file-state failed">${escape(cf.error || "the load failed")}</span>`);
+      out.push(fileButton("load", `Load into ${engineAt(c)}`, { ...at, model: cf.path }, true));
+    }
+  }
+  if (out.length === 0) {
+    for (const p of profiles.filter((x) => x.files != null && !x.running)) {
+      out.push(fileButton("start", `Start ${p.name} with it`, { name: p.name, model: f.path }));
+    }
+  }
+  if (out.length === 0) {
+    const running = profiles.filter((x) => x.files != null && x.running).map((x) => x.name);
+    out.push(`<span class="file-state quiet">${running.length
+      ? escape(`${running.join(", ")} runs without it; stop and start it to allow this place`)
+      : "NO ENGINE CAN OPEN IT"}</span>`);
+  }
+  return out.join("");
+}
+
+function drawLibrary() {
+  $("library").hidden = !actionsOn;
+  if (!actionsOn) return;
+  $("places").innerHTML = lib.places.map((p) => `<span class="place" title="${escape(p.path)}"><code>${escape(p.path)}</code>${p.fixed
+    ? `<small>CONFIG</small>` : `<button class="text-button" data-remove="${escape(p.path)}" aria-label="Remove ${escape(p.path)}" ${busy.library ? "disabled" : ""}>&times;</button>`}</span>`).join("");
+  $("files").innerHTML = lib.files.map((f) => {
+    const under = placeOf(f.path);
+    const rest = under && under !== f.path ? f.path.slice(under.length).replace(/^[/\\]/, "") : "";
+    const dir = rest.includes("/") || rest.includes("\\") ? rest.slice(0, rest.length - baseName(rest).length - 1) : "";
+    return `<div class="file-row"><div class="file-name" title="${escape(f.path)}"><b>${escape(baseName(f.path))}</b><small>${escape(dir ? `${under} / ${dir}` : under || f.path)}</small></div>
+      <span class="file-size">${gb(f.bytes)}</span><div class="file-acts">${fileActions(f)}</div></div>`;
+  }).join("");
+  $("no-files").hidden = lib.files.length > 0;
+  $("no-files").textContent = lib.places.length
+    ? "No .gguf file under these places."
+    : "No place yet. Add a directory or a .gguf file to list the models in it.";
+  $("add-place").textContent = browsing ? "Close" : "Add a place";
+  drawBrowser();
+}
+
+function drawBrowser() {
+  $("browser").hidden = browsing == null;
+  if (browsing == null) return;
+  if (document.activeElement !== $("browse-dir")) $("browse-dir").value = browsing.dir || "";
+  $("browse-up").disabled = !browsing.parent;
+  const added = new Set(lib.places.map((p) => p.path));
+  $("add-dir").disabled = !browsing.dir || added.has(browsing.dir) || busy.library !== "";
+  $("add-dir").textContent = added.has(browsing.dir) ? "A place already" : "Add this directory";
+  $("browse-list").innerHTML = (browsing.dirs || []).map((d) => `<li><button class="dir" data-dir="${escape(d)}">${escape(d)}</button></li>`).join("")
+    + (browsing.files || []).map((f) => `<li><span class="browse-file" title="${escape(f.path)}">${escape(baseName(f.path))}</span><small>${gb(f.bytes)}</small>${added.has(f.path)
+      ? "<small>A PLACE</small>" : `<button class="secondary" data-add-file="${escape(f.path)}" ${busy.library ? "disabled" : ""}>Add this file</button>`}</li>`).join("");
+  const count = (browsing.dirs || []).length + (browsing.files || []).length;
+  $("browse-note").classList.toggle("error", browseError !== "");
+  $("browse-note").textContent = browseError || (count === 0 ? "Nothing here but hidden entries and other files."
+    : `Directories and .gguf files only.${browsing.cut ? " More entries than are listed." : ""} Adding a directory takes the .gguf files under it, four levels deep.`);
+}
+
+async function browse(dir) {
+  try {
+    const answer = await getAction(`/api/v1/library/browse?dir=${encodeURIComponent(dir)}`);
+    if (answer) { browsing = answer; browseError = ""; }
+  } catch (e) {
+    browseError = `Cannot open ${dir || "the home directory"}: ${e.message}`;
+    browsing = browsing || { dir, dirs: [], files: [] };
+  }
+  drawLibrary();
+}
+
+async function changePlaces(path, add) {
+  busy.library = add ? "adding" : "removing";
+  notice(add ? `Adding ${path}…` : `Removing ${path}…`);
+  drawLibrary();
+  try {
+    lib = await post(add ? "/api/v1/library/add" : "/api/v1/library/remove", { path });
+    notice(add ? `Added ${path}.` : `Removed ${path}.`);
+  } catch (e) {
+    notice(e.message, true);
+  }
+  busy.library = "";
+  drawLibrary();
+  refreshLaunch();
+}
+
+$("add-place").addEventListener("click", () => {
+  if (browsing) { browsing = null; drawLibrary(); return; }
+  browse(lib.places.find((p) => !p.fixed)?.path || "");
+});
+$("browse-close").addEventListener("click", () => { browsing = null; browseError = ""; drawLibrary(); });
+$("browse-up").addEventListener("click", () => browsing?.parent && browse(browsing.parent));
+$("browse-form").addEventListener("submit", (e) => { e.preventDefault(); browse($("browse-dir").value.trim()); });
+$("add-dir").addEventListener("click", () => browsing?.dir && changePlaces(browsing.dir, true));
+$("browse-list").addEventListener("click", (e) => {
+  const dir = e.target.closest("[data-dir]"), file = e.target.closest("[data-add-file]");
+  if (dir) browse(`${browsing.dir.replace(/[/\\]$/, "")}${browsing.dir.includes("\\") ? "\\" : "/"}${dir.dataset.dir}`);
+  if (file) changePlaces(file.dataset.addFile, true);
+});
+$("places").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-remove]");
+  if (b) changePlaces(b.dataset.remove, false);
+});
+$("files").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const d = b.dataset, name = baseName(d.model);
+  const refresh = async () => { await Promise.all([refreshControls(), refreshLaunch()]); drawLibrary(); };
+  if (d.act === "load") act("library", "loading", `Loading ${name} into ${d.engine} ${portOf(d.endpoint)}…`, "/api/v1/load",
+    { engine: d.engine, endpoint: d.endpoint, model: d.model }, `${d.engine} is loading ${name}; it shows here when ready.`, refresh);
+  if (d.act === "unload") act("library", "unloading", `Unloading ${d.model} from ${d.engine} ${portOf(d.endpoint)}…`, "/api/v1/unload",
+    { engine: d.engine, endpoint: d.endpoint, model: d.model }, `${d.engine} is unloading ${d.model}.`, refresh);
+  if (d.act === "start") act("library", "starting", `Starting ${d.name} with ${name}…`, "/api/v1/launch/start",
+    { name: d.name, model: d.model }, `Started ${d.name} with ${name}. Its model appears once the engine answers.`, refresh);
+});
 
 /* ---- chat: one conversation per model, kept while the page is open ---- */
 const chats = new Map();
@@ -1480,6 +1686,7 @@ addEventListener("resize", () => current && drawPools(current));
 poll();
 pollControls();
 pollLaunch();
+pollLibrary();
 </script>
 </body>
 </html>

@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/pcfpcfpcf/steth/internal/library"
 )
 
 const (
 	// modelPlaceholder in a command's argument is replaced by the chosen model.
 	modelPlaceholder = "{model}"
+	// placePlaceholder makes an argument repeat once for each place where
+	// model files are, with the flag before it: "--models-dir", "{place}".
+	placePlaceholder = "{place}"
 	// namedChoices is how many choices a refusal names.
 	namedChoices = 5
 )
@@ -21,8 +25,9 @@ const (
 // Config is steth's config file.
 type Config struct {
 	Launch []Profile `json:"launch"`
-	// Models are directories and .gguf files; the model files under them
-	// are the choices of every profile with {model} that lists none.
+	// Models are directories and .gguf files, the places that are always
+	// there; the page adds more. The model files under the places are the
+	// choices of every profile with {model} that lists none.
 	Models []string `json:"models"`
 }
 
@@ -61,13 +66,9 @@ func Load(path string) (Config, error) {
 }
 
 func validate(c Config) error {
-	for _, root := range c.Models {
-		info, err := os.Stat(root)
-		switch {
-		case err != nil:
-			return fmt.Errorf(`models: %w; list directories and %s files that are there`, err, modelExt)
-		case !info.IsDir() && !strings.EqualFold(filepath.Ext(root), modelExt):
-			return fmt.Errorf(`models: %q is neither a directory nor a %s file`, root, modelExt)
+	for _, place := range c.Models {
+		if err := library.Check(place); err != nil {
+			return fmt.Errorf("models: %w; list absolute paths of directories and .gguf files that are there", err)
 		}
 	}
 	named := map[string]bool{}
@@ -79,8 +80,8 @@ func validate(c Config) error {
 			return fmt.Errorf("two profiles are named %q; give each its own name", p.Name)
 		case len(p.Command) == 0 || p.Command[0] == "":
 			return fmt.Errorf(`profile %q has an empty command; give its argv, such as "command": ["llama", "serve", "--port", "9931"]`, p.Name)
-		case p.takesModel() && len(p.Models) == 0 && len(c.Models) == 0:
-			return fmt.Errorf(`profile %q has %s in its command but no models; list the choices under its "models", or directories and files under the file's "models"`, p.Name, modelPlaceholder)
+		case strings.Contains(p.Command[0], placePlaceholder):
+			return fmt.Errorf(`profile %q starts its command with %s; the first argument is the program`, p.Name, placePlaceholder)
 		case !p.takesModel() && len(p.Models) > 0:
 			return fmt.Errorf(`profile %q lists models but its command has no %s; put %s where the model goes, or drop "models"`, p.Name, modelPlaceholder, modelPlaceholder)
 		}
@@ -93,7 +94,7 @@ func (p Profile) takesModel() bool {
 	return slices.ContainsFunc(p.Command, func(arg string) bool { return strings.Contains(arg, modelPlaceholder) })
 }
 
-// takesFiles says whether p's choices are the config's model files.
+// takesFiles says whether p's choices are the model files under the places.
 func (p Profile) takesFiles() bool { return p.takesModel() && len(p.Models) == 0 }
 
 // checkModel says whether model is one of choices, p's choices now.
@@ -108,7 +109,7 @@ func (p Profile) checkModel(model string, choices []string) error {
 		return nil
 	}
 	if len(choices) == 0 {
-		return fmt.Errorf(`%q has no model %q; no model files are under the config's "models" now`, p.Name, model)
+		return fmt.Errorf(`%q has no model %q; no model files are under the places now`, p.Name, model)
 	}
 	if len(choices) > namedChoices {
 		return fmt.Errorf("%q has no model %q; choose one of %s and %d more", p.Name, model, quoteAll(choices[:namedChoices]), len(choices)-namedChoices)
@@ -116,13 +117,32 @@ func (p Profile) checkModel(model string, choices []string) error {
 	return fmt.Errorf("%q has no model %q; choose one of %s", p.Name, model, quoteAll(choices))
 }
 
-// argv is the command with model in place of every {model}.
-func (p Profile) argv(model string) []string {
-	argv := make([]string, len(p.Command))
+// argv is the command with model in place of every {model}, and each
+// argument with {place} once for each of places, after the flag before it.
+func (p Profile) argv(model string, places []string) []string {
+	var argv []string
+	fill := func(arg string) string { return strings.ReplaceAll(arg, modelPlaceholder, model) }
 	for i, arg := range p.Command {
-		argv[i] = strings.ReplaceAll(arg, modelPlaceholder, model)
+		if !strings.Contains(arg, placePlaceholder) {
+			if i+1 < len(p.Command) && isFlag(arg) && strings.Contains(p.Command[i+1], placePlaceholder) {
+				continue // goes before each place
+			}
+			argv = append(argv, fill(arg))
+			continue
+		}
+		for _, place := range places {
+			if i > 0 && isFlag(p.Command[i-1]) {
+				argv = append(argv, p.Command[i-1])
+			}
+			argv = append(argv, fill(strings.ReplaceAll(arg, placePlaceholder, place)))
+		}
 	}
 	return argv
+}
+
+// isFlag is an argument such as --models-dir that names what follows it.
+func isFlag(arg string) bool {
+	return strings.HasPrefix(arg, "-") && !strings.ContainsAny(arg, "={")
 }
 
 func quoteAll(words []string) string {

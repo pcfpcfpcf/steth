@@ -82,7 +82,7 @@ func helper(t *testing.T, name string, args ...string) Profile {
 }
 
 func launcher(t *testing.T, profiles ...Profile) *Launcher {
-	l := New(Config{Launch: profiles})
+	l := New(profiles, nil)
 	l.grace = shortGrace
 	t.Cleanup(l.StopAll)
 	return l
@@ -160,7 +160,7 @@ func TestLoadSaysWhatWouldWork(t *testing.T) {
 		{`{"launch": [{"name": "a"}]}`, `profile "a" has an empty command`},
 		{`{"launch": [{"name": "a", "command": [""]}]}`, `profile "a" has an empty command`},
 		{`{"launch": [{"name": "a", "command": ["x"]}, {"name": "a", "command": ["y"]}]}`, `two profiles are named "a"`},
-		{`{"launch": [{"name": "a", "command": ["x", "--model={model}"]}]}`, `has {model} in its command but no models`},
+		{`{"launch": [{"name": "a", "command": ["{place}"]}]}`, `starts its command with {place}`},
 		{`{"launch": [{"name": "a", "command": ["x"], "models": ["m"]}]}`, `lists models but its command has no {model}`},
 		{`{"launch": []} {}`, "text after the first JSON object"},
 		{`{"launch": [`, "unexpected EOF"},
@@ -337,7 +337,7 @@ func TestStartRefuses(t *testing.T) {
 	if err := l.Stop("nobody"); err == nil || !strings.Contains(err.Error(), `no profile named "nobody"`) {
 		t.Errorf("expected Stop to refuse an unknown profile; got %v", err)
 	}
-	if err := New(Config{}).Start("x", ""); err == nil || !strings.Contains(err.Error(), "the config file has none") {
+	if err := New(nil, nil).Start("x", ""); err == nil || !strings.Contains(err.Error(), "the config file has none") {
 		t.Errorf("expected a launcher without profiles to say so; got %v", err)
 	}
 }

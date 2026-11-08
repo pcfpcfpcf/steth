@@ -7,10 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/control"
+	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
@@ -271,5 +275,41 @@ func TestLaunchWithoutConfig(t *testing.T) {
 	if w := act(h, http.MethodPost, "/api/v1/launch/start", `{"name":"x"}`, nil); w.Code != http.StatusNotFound ||
 		!strings.Contains(w.Body.String(), "--config") {
 		t.Errorf("start without profiles: status %d %s", w.Code, w.Body)
+	}
+}
+
+func TestLibraryPlacesAndBrowse(t *testing.T) {
+	dir := t.TempDir()
+	model := filepath.Join(dir, "m.gguf")
+	if err := os.WriteFile(model, []byte("12345"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := withActions(&fakeEngine{})
+	body := func(path string) string {
+		text, _ := json.Marshal(map[string]string{"path": path})
+		return string(text)
+	}
+	var view libraryView
+	w := act(h, http.MethodPost, "/api/v1/library/add", body(dir), nil)
+	if err := json.Unmarshal(w.Body.Bytes(), &view); w.Code != http.StatusOK || err != nil {
+		t.Fatalf("add: status %d %s", w.Code, w.Body)
+	}
+	real, _ := filepath.EvalSymlinks(model)
+	if len(view.Places) != 1 || len(view.Files) != 1 || view.Files[0].Path != model || view.Files[0].Bytes != 5 || view.Files[0].Real != real {
+		t.Errorf("after add: %+v", view)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/library/add", body("relative"), nil); w.Code != http.StatusConflict {
+		t.Errorf("a relative place: status %d %s", w.Code, w.Body)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/library/add", body(dir), func(r *http.Request) { r.Header.Set("Origin", "http://evil.example") }); w.Code != http.StatusForbidden {
+		t.Errorf("another page adding a place: status %d", w.Code)
+	}
+	var listing library.Listing
+	w = act(h, http.MethodGet, "/api/v1/library/browse?dir="+url.QueryEscape(dir), "", nil)
+	if err := json.Unmarshal(w.Body.Bytes(), &listing); err != nil || len(listing.Files) != 1 {
+		t.Errorf("browse: status %d %s", w.Code, w.Body)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/library/remove", body(dir), nil); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"places":[]`) {
+		t.Errorf("remove: status %d %s", w.Code, w.Body)
 	}
 }

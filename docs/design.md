@@ -60,7 +60,8 @@ Each lives in its own package and is replaceable alone.
 | `internal/discover` | finds engines from sockets, processes and probes; keeps the source list | `Find`, `Registry` |
 | `internal/collector` | polls whichever sources there are on a monotonic schedule, merges readings, keeps the latest state and two minutes of speeds | `New(sources func)`, `Run(ctx)`, `State()` |
 | `internal/chat` | sends one prompt to a model steth knows, streams the reply back, and reports that reply's numbers | `Send(ctx, target, request, w) (Reply, error)` |
-| `internal/launch` | reads the config file; lists the model files under its `models`; starts and stops engine processes from its profiles; owns only its children; keeps each one's recent log | `Load(path)`, `New(config)`, `Scan(roots)`, `Start(name, model)`, `Stop(name)`, `Status()` |
+| `internal/library` | the places of model files (the config's, and those added from the page, kept in a file); the `.gguf` files under them; one directory listed for picking a place | `Open(fixed, file)`, `Add`, `Remove`, `Scan(places)`, `Browse(dir)` |
+| `internal/launch` | reads the config file; starts and stops engine processes from its profiles, a `{model}` among the files under the places; owns only its children; keeps each one's recent log | `Load(path)`, `New(profiles, places)`, `Start(name, model)`, `Stop(name)`, `Status()` |
 | `internal/web` | serves the embedded page and the state as JSON; takes actions from its own page only | `Handler(state func, *Actions) http.Handler`, `Loopback(listen)` |
 | `cmd/steth` | flags, the config file, the engine list, and wiring | the binary |
 
@@ -108,7 +109,7 @@ browser never supplies a command:
   "launch": [
     {
       "name": "geode",
-      "command": ["C:/geode/bin/geode.exe", "serve", "{model}", "--port", "8080", "--lanes", "1"],
+      "command": ["C:/geode/bin/geode.exe", "serve", "{model}", "--models-dir", "{place}", "--port", "8080", "--lanes", "1"],
       "dir": "C:/geode",
       "env": {"HOME": "C:/msys64/home/me"}
     },
@@ -126,15 +127,21 @@ browser never supplies a command:
 ```
 
 `{model}` is replaced by the chosen model; a profile without it starts as
-written. A profile's own `models` are its choices; one that lists none takes
-the model files under the file's `models`, a list of directories and `.gguf`
-files. steth looks through each directory four levels deep, skipping hidden
+written. An argument with `{place}` repeats once for each place, with the
+flag before it, so geode starts allowed to open every place's files. A
+profile's own `models` are its choices; one that lists none takes the model
+files under the places: the file's `models`, a list of directories and
+`.gguf` files that are always there, then those added on the page, kept in
+`--places` (by default `steth/places.json` in the user's config directory).
+A place is an absolute path, there when added; one gone later is kept and
+skipped. The page picks a place by listing one directory at a time through
+steth, its subdirectories and `.gguf` files only. steth looks through each directory four levels deep, skipping hidden
 entries, and lists the `.gguf` files with their size: a split model once, by
 its first part, with all its parts' bytes; a vision projector (`mmproj*`)
 not at all; a link as the file it points to, as in a Hugging Face cache. It
 looks again at every read, so a file copied in shows without a restart, and
-lists at most 1,000. Every entry must be there when steth starts; one gone
-later is skipped. A start takes only a choice listed now, never a path from
+lists at most 1,000. Every entry in the file must be there when steth
+starts. A start takes only a choice listed now, never a path from
 the page. Before a start, steth refuses a profile it already runs,
 and one whose command names a port (`--port N`) that already answers on this
 machine: the engine is running already, started some other way. It stops
@@ -162,7 +169,7 @@ in the page only.
 
 ### The page
 
-One page in two columns: memory pools (01) and models (02) on the left and,
+One page in two columns: memory pools (01), models (02) and model files (03) on the left and,
 where steth takes actions, the workspace on the right, held in view as the
 left scrolls, with the conversation taking the height the rest leaves.
 Under 1100 px wide the workspace follows the models; bound off loopback the
@@ -172,14 +179,20 @@ engine and endpoint, with *Load* or *Unload* for it; and, with launch
 profiles, an engine profile, its `{model}`, *Start* and *Stop*. A line
 under the toolbar, there only when it has something to say, gives what the
 last action did or the engine's refusal; the masthead's `LOCAL ONLY` says,
-on hover, where prompts go. Below, the conversation (03) with the model picked, one kept per model, and
-its pulse (04): the last reply's decode, prefill and first text with where
+on hover, where prompts go. Below, the conversation (04) with the model picked, one kept per model, and
+its pulse (05): the last reply's decode, prefill and first text with where
 each came from (`ENGINE`, `DERIVED`), the time this page waited, the
 model's decode speed from the state over two minutes, its state, requests,
 KV and endpoint, and the picked profile's log. Bound off loopback the
 workspace is not drawn and the masthead says `MONITOR ONLY`. Clicking a pool
 or a model opens its details in a drawer, as before, with *Talk to it* for
-a model.
+a model. Model files (03), where steth takes actions, shows the
+places (those from the config marked, the others removable), *Add a place*
+to browse to a directory or `.gguf` file, and every model file under them
+with its size. A file's row says what each engine that loads by file does
+with it: in it, loading, failed with why, or *Load into* it (and *Unload*);
+where none lists it, *Start* each stopped profile that takes model files
+with it; a running one started before the place was added is named.
 
 ### Guard
 
@@ -201,6 +214,9 @@ address, steth serves no action routes, and `--config` is refused.
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
 | `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, running, model?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null |
 | `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without `--config` |
+| `GET /api/v1/library` | — | `{places: [{path, fixed}], files: [{path, bytes, real}]}`: the places and the model files under them; `real` is the path with every link followed, as an engine that resolves links names it |
+| `POST /api/v1/library/add`, `/remove` | `{path}` | the library after it; 409 with the reason: not absolute, not there, neither a directory nor a `.gguf` file, a place already, or one from the config file |
+| `GET /api/v1/library/browse?dir=` | — | `{dir, parent, dirs, files, cut}`: one directory's subdirectories and `.gguf` files, hidden entries left out; no `dir` is the home directory |
 
 Errors are `{"error": message}`.
 

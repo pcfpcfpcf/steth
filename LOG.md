@@ -4,6 +4,20 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **Places of model files picked on the page,** asked for by the owner,
+  built beside geode's runtime loads (agreed with the session working on
+  geode). *Model files* browses this machine one directory at a time
+  through steth, directories and `.gguf` files only, and adds a directory
+  or file as a place; places added there are kept in a file of steth's own
+  (`--places`), apart from the config's, which the page cannot remove. A
+  place is any absolute path the page sends, but it only names where to
+  look: a start or load still takes only a file steth or the engine lists.
+  `{place}` in a profile repeats per place with its flag, so geode starts
+  allowed to open them; geode keeps its allow-list from flags only, so a
+  place added later reaches it at its next start, and the row says so.
+  Checked live: a place added from the page and kept across restarts,
+  geode started from a file's row with `--models-dir` from the place, the
+  served file shown in it.
 - **geode loads and unloads by file,** to the contract agreed with the
   session working on geode: `/models/available` lists the files its
   `--models-dir` allows, `/models/load` takes a path and answers 202,

@@ -80,20 +80,28 @@ narrow screen it follows the models.
   *Unload* button for the one picked; vLLM's unload
   is its sleep, which also needs `--enable-sleep-mode`. A model whose engine has no
   controls gets no button.
+- **Model files.** *Add a place* under *Model files* browses this machine
+  for a directory or a `.gguf` file; every model file under the places is
+  listed with its size. A geode started with `--models-dir` for the place
+  loads a file with *Load into geode* and unloads it; a file no running
+  engine may open has *Start* for each profile that takes model files.
+  Places added on the page are kept in `--places`, by default
+  `steth/places.json` in your config directory.
 - **Start and stop engines.** `--config steth.json` names launch profiles
   and where model files are:
 
       {"models": ["/models", "/data/Qwen3.5-9B-Q4_K_M.gguf"],
        "launch": [
-        {"name": "geode", "command": ["geode", "serve", "{model}", "--port", "8080"]},
+        {"name": "geode", "command": ["geode", "serve", "{model}", "--models-dir", "{place}", "--port", "8080"]},
         {"name": "llama router", "command": ["llama", "serve", "--models-dir", "/models", "--port", "9931"],
          "dir": "/srv/llama", "env": {"LLAMA_CACHE": "/srv/cache"}}
       ]}
 
   The toolbar's *Engine* picks a profile and *With* its `{model}`: the
-  profile's own `models`, or else every `.gguf` file under the top-level
-  `models` (directories and files), found again at each look and shown
-  with its size. The engine's log is under the pulse. steth refuses to start a
+  profile's own `models`, or else every `.gguf` file under the places: the
+  top-level `models` (directories and files) and those added on the page,
+  found again at each look and shown with its size. An argument with
+  `{place}` repeats for each place, after the flag before it. The engine's log is under the pulse. steth refuses to start a
   profile already running or whose `--port` already answers, keeps each
   engine's last 120 log lines, stops only engines it started, and stops all
   of them when it exits. A started engine appears like any other, through

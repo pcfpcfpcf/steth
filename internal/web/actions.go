@@ -13,6 +13,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/chat"
 	"github.com/pcfpcfpcf/steth/internal/engine/control"
 	"github.com/pcfpcfpcf/steth/internal/launch"
+	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
@@ -33,6 +34,8 @@ type Actions struct {
 	// Launcher starts and stops engines from launch profiles; nil without a
 	// config file.
 	Launcher *launch.Launcher
+	// Places are where model files are on this machine.
+	Places *library.Places
 	// Client sends chats and controls; it needs no timeout, as a chat ends
 	// when the page cancels it.
 	Client *http.Client
@@ -41,6 +44,9 @@ type Actions struct {
 }
 
 func (a *Actions) register(mux *http.ServeMux) {
+	if a.Places == nil {
+		a.Places, _ = library.Open(nil, "") // kept in memory; it cannot fail
+	}
 	mux.HandleFunc("GET /api/v1/controls", guard(a.controls))
 	mux.HandleFunc("POST /api/v1/load", guard(a.load))
 	mux.HandleFunc("POST /api/v1/unload", guard(a.unload))
@@ -48,6 +54,10 @@ func (a *Actions) register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/launch", guard(a.launchStatus))
 	mux.HandleFunc("POST /api/v1/launch/start", guard(a.launchStart))
 	mux.HandleFunc("POST /api/v1/launch/stop", guard(a.launchStop))
+	mux.HandleFunc("GET /api/v1/library", guard(a.libraryList))
+	mux.HandleFunc("POST /api/v1/library/add", guard(a.placeAdd))
+	mux.HandleFunc("POST /api/v1/library/remove", guard(a.placeRemove))
+	mux.HandleFunc("GET /api/v1/library/browse", guard(a.browse))
 }
 
 // controllable is one engine with controls, and the models it could load
