@@ -214,7 +214,7 @@ address, steth serves no action routes, and `--config` is refused.
 | route | body | answer |
 |---|---|---|
 | `GET /api/v1/controls` | — | `[{engine, endpoint, models, files?, error?}]`: every engine with controls and the models it could load or unload; `files`, from an engine that loads by file (geode), is `[{path, model?, state?, error?}]`, each file it may open and what it is now (`loading`, `ready`, `failed`, `unloading`) |
-| `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`; 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
+| `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`, done `loaded` or `unloaded`, or `loading` or `unloading` from an engine that answers once begun (geode); 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
 | `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, running, model?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null |
 | `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without `--config` |

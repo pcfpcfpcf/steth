@@ -32,6 +32,12 @@ type File struct {
 	Error string `json:"error,omitempty"`
 }
 
+// Begins is an engine whose load and unload answer once the work has
+// begun, going on after; the model's state says when it is done.
+type Begins interface {
+	Begins()
+}
+
 // Files is what an adapter offers when its engine loads models by file:
 // Load takes the file's path, Unload the model's id.
 type Files interface {

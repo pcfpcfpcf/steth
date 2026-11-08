@@ -4,6 +4,10 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **A load that has only begun says so.** geode answers a load or unload
+  once begun, so steth's reply says `loading` or `unloading` for it, not
+  `loaded`; the page already waits on the model's state.
+
 - **A split model loads by its first part, untried.** geode lists each
   part as a file of its own and has not tested a load from the first;
   steth keeps sending that part's path until it has.

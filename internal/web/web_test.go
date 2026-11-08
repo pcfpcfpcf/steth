@@ -90,6 +90,26 @@ func (f *fakeEngine) Unload(_ context.Context, model string) error {
 	return nil
 }
 
+// beginning is an engine that answers once a load has begun.
+type beginning struct{ fakeEngine }
+
+func (*beginning) Begins() {}
+
+func TestLoadThatBeginsSaysSo(t *testing.T) {
+	for _, c := range []struct {
+		engine Source
+		want   string
+	}{
+		{&fakeEngine{}, `"done":"loaded"`},
+		{&beginning{}, `"done":"loading"`},
+	} {
+		h := Handler(current, &Actions{Sources: func() []Source { return []Source{c.engine} }, Client: http.DefaultClient})
+		if w := act(h, http.MethodPost, "/api/v1/load", loadM, nil); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), c.want) {
+			t.Errorf("load: status %d %s; expected %s", w.Code, w.Body, c.want)
+		}
+	}
+}
+
 // plain is a source without controls.
 type plain struct{}
 

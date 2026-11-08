@@ -91,6 +91,9 @@ func (s *Source) Available(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
+// Begins: geode loads and unloads in the background.
+func (s *Source) Begins() {}
+
 // Load asks geode to load the file at path; it answers once the load has
 // begun, and the model shows as loading.
 func (s *Source) Load(ctx context.Context, path string) error {

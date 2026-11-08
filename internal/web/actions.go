@@ -128,15 +128,17 @@ func (a *Actions) controlsOf(t target) (control.Controls, error) {
 }
 
 func (a *Actions) load(w http.ResponseWriter, r *http.Request) {
-	a.control(w, r, "loaded", control.Controls.Load)
+	a.control(w, r, "loaded", "loading", control.Controls.Load)
 }
 
 func (a *Actions) unload(w http.ResponseWriter, r *http.Request) {
-	a.control(w, r, "unloaded", control.Controls.Unload)
+	a.control(w, r, "unloaded", "unloading", control.Controls.Unload)
 }
 
 // control runs one load or unload through the engine named in the body.
-func (a *Actions) control(w http.ResponseWriter, r *http.Request, done string,
+// done is the reply when the engine answers once finished, begun when it
+// answers once started.
+func (a *Actions) control(w http.ResponseWriter, r *http.Request, done, begun string,
 	act func(control.Controls, context.Context, string) error) {
 	var t target
 	if err := decode(w, r, &t); err != nil {
@@ -153,6 +155,9 @@ func (a *Actions) control(w http.ResponseWriter, r *http.Request, done string,
 	if err := act(c, ctx, t.Model); err != nil {
 		fail(w, http.StatusBadGateway, err)
 		return
+	}
+	if _, ok := c.(control.Begins); ok {
+		done = begun
 	}
 	log.Printf("steth: %s %s on %s at %s", done, t.Model, t.Engine, t.Endpoint)
 	reply(w, map[string]string{"model": t.Model, "done": done})
