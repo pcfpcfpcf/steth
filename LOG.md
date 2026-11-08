@@ -4,6 +4,10 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **A split model loads by its first part, untried.** geode lists each
+  part as a file of its own and has not tested a load from the first;
+  steth keeps sending that part's path until it has.
+
 - **Load and unload by file checked live** against geode's routes (geode
   branch `steth`, d33c40f) on port 8091: geode started from a file's row
   with `--models-dir` from the place (up in 3 s); the 4B loaded from its
