@@ -217,6 +217,51 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
 .tip .row span:last-child { color: var(--ink); }
 .tip .more { margin-top: 6px; font-size: 11px; color: var(--muted); }
 
+/* ---- engines: launch profiles and load/unload ---- */
+.engines { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.engines + .engines { margin-top: 12px; }
+@media (max-width: 640px) { .engines { grid-template-columns: 1fr; } }
+.card { padding: 16px 18px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--ring), var(--shadow); min-width: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-head b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .note { word-break: break-word; }
+.act-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.act-row select { flex: 1; min-width: 0; }
+.control-list { margin: 10px 0 0; padding: 0; list-style: none; }
+.control-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: 14px; }
+.control-list li:last-child { border-bottom: 0; }
+.control-list span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.control-list em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 8px; }
+.act {
+  border: 0; border-radius: 8px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+  background: var(--ink); color: var(--page); flex-shrink: 0;
+}
+.act.quiet { background: var(--track); color: var(--ink); }
+.act:disabled { opacity: .45; cursor: default; }
+.act:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+select, textarea {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--page); border: 0; border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--ring); padding: 6px 8px;
+}
+.error { margin-top: 8px; font-size: 13px; color: var(--critical); word-break: break-word; }
+details { margin-top: 10px; font-size: 13px; }
+summary { cursor: pointer; color: var(--ink-2); }
+pre.log {
+  margin: 8px 0 0; max-height: 220px; overflow: auto; padding: 10px; border-radius: 8px; background: var(--track);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all;
+}
+
+/* ---- chat, in a model's panel ---- */
+.turns { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.turn { padding: 10px 12px; border-radius: 10px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.turn.user { background: var(--track); align-self: flex-end; max-width: 88%; }
+.turn.assistant { box-shadow: inset 0 0 0 1px var(--ring); }
+.turn .thinking { color: var(--muted); font-size: 13px; }
+.turn .numbers { margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: normal; }
+.chat-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.chat-form textarea { width: 100%; resize: vertical; min-height: 64px; }
+.chat-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -257,9 +302,27 @@ td .swatch { display: inline-block; vertical-align: -1px; margin-right: 8px; }
     <div class="models" id="models"></div>
     <p class="nothing" id="no-models" hidden>No model is loaded.</p>
   </section>
+
+  <section id="manage" hidden>
+    <h2>Engines</h2>
+    <div class="engines" id="launch"></div>
+    <div class="engines" id="controls"></div>
+    <p class="nothing" id="no-manage" hidden>No engine here loads or unloads models over its API, and steth has no launch profiles: start it with <code>--config FILE</code> to start engines from the page.</p>
+  </section>
 </main>
 <div class="scrim" id="scrim"></div>
-<aside class="panel" id="panel" aria-live="polite"></aside>
+<aside class="panel" id="panel">
+  <div id="panel-body" aria-live="polite"></div>
+  <div id="panel-chat" hidden>
+    <h4>Try it</h4>
+    <div class="note">Sent from steth to this model alone. Its numbers are this reply's, not the model's speed above.</div>
+    <div class="turns" id="turns"></div>
+    <form class="chat-form" id="chat-form">
+      <textarea id="prompt" rows="3" placeholder="Ask this model something" aria-label="Message"></textarea>
+      <div class="chat-bar"><button type="button" class="act quiet" id="chat-clear">Clear</button><button type="submit" class="act" id="send">Send</button></div>
+    </form>
+  </div>
+</aside>
 <div class="tip" id="tip" role="tooltip"></div>
 
 <script>
@@ -681,7 +744,7 @@ function select(what) {
 }
 function closePanel() { select({}); }
 $("scrim").addEventListener("click", closePanel);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.id !== "prompt") closePanel(); });
 
 function modelDetails(status, key) {
   const m = findModel(status, key), c = series(colorOf(m));
@@ -766,10 +829,12 @@ function drawPanel(status) {
   const open = selected.model != null || selected.pool != null;
   $("panel").classList.toggle("shown", open);
   $("scrim").classList.toggle("shown", open);
+  $("panel-chat").hidden = !(open && selected.model != null && actionsOn);
   if (!open) return;
-  $("panel").innerHTML = selected.model != null
+  $("panel-body").innerHTML = selected.model != null
     ? modelDetails(status, selected.model) : poolDetails(status, selected.pool);
-  $("panel").querySelector(".close").addEventListener("click", closePanel);
+  $("panel-body").querySelector(".close").addEventListener("click", closePanel);
+  if (selected.model !== chatShown) drawChat();
 }
 
 /* ---- tooltip ---- */
@@ -823,6 +888,234 @@ function drawSources(all) {
   else setLive("partial", "box memory not readable", detail);
 }
 
+/* ---- actions: steth answers them only on this machine, to this page ---- */
+/* null until steth says whether it takes actions; false when it only
+   monitors (bound off loopback). */
+let actionsOn = null;
+const CONTROLS_MS = 5000, LAUNCH_MS = 2000;
+
+/* POSTs `body` as JSON; throws the error steth or the engine gave. */
+async function post(path, body) {
+  const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const answer = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(answer.error || `status ${response.status}`);
+  return answer;
+}
+
+/* GETs an action route's JSON; null when steth serves no actions. */
+async function getAction(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (response.status === 404 || response.status === 403) return null;
+  if (!response.ok) throw new Error(`status ${response.status}`);
+  return response.json();
+}
+
+/* What each card is doing, kept across redraws: an action under way, its
+   error, the model chosen, whether its log is open. */
+const ui = new Map();
+const uiOf = (key) => { if (!ui.has(key)) ui.set(key, {}); return ui.get(key); };
+
+/* Runs one action from a card, its button disabled until it ends. */
+async function run(key, path, body, refresh) {
+  const u = uiOf(key);
+  u.busy = true; u.error = "";
+  drawManage();
+  try { await post(path, body); } catch (e) { u.error = e.message; }
+  u.busy = false;
+  await refresh();
+}
+
+let controls = [], profiles = [];
+
+async function pollControls() {
+  try {
+    const got = await getAction("/api/v1/controls");
+    actionsOn = got != null;
+    controls = got || [];
+  } catch (e) { controls = []; }
+  drawManage();
+  setTimeout(pollControls, CONTROLS_MS);
+}
+
+async function refreshLaunch() {
+  try { profiles = (await getAction("/api/v1/launch")) || []; } catch (e) { profiles = []; }
+  drawManage();
+}
+async function pollLaunch() {
+  await refreshLaunch();
+  setTimeout(pollLaunch, LAUNCH_MS);
+}
+async function refreshControls() {
+  try { controls = (await getAction("/api/v1/controls")) || []; } catch (e) {}
+  drawManage();
+}
+
+/* A model is loaded when its engine lists it, and not asleep. */
+const loadedOn = (c, model) => current?.models.some((m) =>
+  m.engine === c.engine && m.endpoint === c.endpoint && m.id === model && m.state !== "sleeping");
+
+function launchCard(p) {
+  const u = uiOf(`launch ${p.name}`);
+  const chosen = u.model ?? p.models[0] ?? "";
+  const status = p.running ? `<span class="state serving"><i></i><span>Running${p.pid ? ` · pid ${p.pid}` : ""}</span></span>`
+    : `<span class="state"><i></i><span>${p.exit ? `Ended: ${escape(p.exit)}` : "Not started"}</span></span>`;
+  const models = p.models.length === 0 || p.running ? ""
+    : `<select data-model aria-label="Model for ${escape(p.name)}">${p.models.map((m) =>
+      `<option value="${escape(m)}"${m === chosen ? " selected" : ""}>${escape(m.slice(m.search(/[^/\\]*$/)))}</option>`).join("")}</select>`;
+  return `<div class="card" data-key="launch ${escape(p.name)}">
+    <div class="card-head"><b>${escape(p.name)}</b>${status}</div>
+    ${p.running && p.model ? `<div class="note">${escape(p.model)}</div>` : ""}
+    <div class="act-row">${models}<span style="flex:1"></span>
+      <button class="act${p.running ? " quiet" : ""}" data-launch="${p.running ? "stop" : "start"}"${u.busy ? " disabled" : ""}>${u.busy ? "…" : p.running ? "Stop" : "Start"}</button></div>
+    ${u.error ? `<div class="error">${escape(u.error)}</div>` : ""}
+    ${p.log.length ? `<details data-log${u.logOpen ? " open" : ""}><summary>Log, last ${p.log.length} lines</summary><pre class="log">${escape(p.log.join("\n"))}</pre></details>` : ""}
+  </div>`;
+}
+
+function controlCard(c) {
+  const rows = c.models.map((model) => {
+    const u = uiOf(`control ${c.endpoint} ${model}`), loaded = loadedOn(c, model);
+    return `<li><span>${escape(model)}${loaded ? "<em>loaded</em>" : ""}</span>
+      <button class="act${loaded ? " quiet" : ""}" data-control="${loaded ? "unload" : "load"}" data-model="${escape(model)}"${u.busy ? " disabled" : ""}>${u.busy ? "…" : loaded ? "Unload" : "Load"}</button></li>
+      ${u.error ? `<li class="error">${escape(u.error)}</li>` : ""}`;
+  }).join("");
+  return `<div class="card" data-engine="${escape(c.engine)}" data-endpoint="${escape(c.endpoint)}">
+    <div class="card-head"><b>${escape(c.engine)}</b><span class="note">${escape(c.endpoint)}</span></div>
+    ${c.error ? `<div class="error">${escape(c.error)}</div>` : ""}
+    ${c.models.length ? `<ul class="control-list">${rows}</ul>` : `<div class="note">It lists no model it could load.</div>`}
+  </div>`;
+}
+
+function drawManage() {
+  $("manage").hidden = !actionsOn;
+  if (!actionsOn) return;
+  /* A redraw would close a select the person has open. */
+  if (document.activeElement?.matches?.("#manage select")) return;
+  $("launch").innerHTML = profiles.map(launchCard).join("");
+  $("controls").innerHTML = controls.map(controlCard).join("");
+  $("no-manage").hidden = profiles.length + controls.length > 0;
+}
+
+$("launch").addEventListener("change", (e) => {
+  const card = e.target.closest(".card");
+  if (card && e.target.matches("select[data-model]")) uiOf(card.dataset.key).model = e.target.value;
+});
+$("launch").addEventListener("toggle", (e) => {
+  const card = e.target.closest?.(".card");
+  if (card && e.target.matches("details[data-log]")) uiOf(card.dataset.key).logOpen = e.target.open;
+}, true);
+$("launch").addEventListener("click", (e) => {
+  const button = e.target.closest("button[data-launch]");
+  if (!button) return;
+  const key = button.closest(".card").dataset.key, name = key.slice("launch ".length);
+  const p = profiles.find((x) => x.name === name);
+  const model = uiOf(key).model ?? p?.models[0] ?? "";
+  run(key, `/api/v1/launch/${button.dataset.launch}`, button.dataset.launch === "start" ? { name, model } : { name }, refreshLaunch);
+});
+$("controls").addEventListener("click", (e) => {
+  const button = e.target.closest("button[data-control]");
+  if (!button) return;
+  const card = button.closest(".card"), model = button.dataset.model;
+  run(`control ${card.dataset.endpoint} ${model}`, `/api/v1/${button.dataset.control}`,
+    { engine: card.dataset.engine, endpoint: card.dataset.endpoint, model }, refreshControls);
+});
+
+/* ---- chat: one conversation per model, kept while the page is open ---- */
+const chats = new Map();
+let chatShown = null, chatAbort = null;
+
+const numbersText = (n) => {
+  const derived = (field) => (n.fidelity?.[field] === "derived" ? " (derived)" : "");
+  const parts = [];
+  if (n.first_text_s != null) parts.push(`first text ${n.first_text_s.toFixed(2)} s`);
+  if (n.decode_tps != null) parts.push(`decode ${tps(n.decode_tps)}${derived("decode_tps")}`);
+  if (n.prefill_tps != null) parts.push(`prefill ${tps(n.prefill_tps)}${derived("prefill_tps")}`);
+  if (n.completion_tokens != null) parts.push(`${count(n.completion_tokens)} tokens`);
+  return parts.join(" · ");
+};
+
+function drawChat() {
+  chatShown = selected.model;
+  const turns = chats.get(chatShown) || [];
+  $("turns").innerHTML = turns.map((t) => `<div class="turn ${t.role}">${t.thinking ? `<div class="thinking">${escape(t.thinking)}</div>` : ""}${escape(t.content)}${
+    t.error ? `<div class="error">${escape(t.error)}</div>` : ""}${t.numbers ? `<div class="numbers">${escape(numbersText(t.numbers))}</div>` : ""}</div>`).join("");
+  $("send").textContent = chatAbort ? "Stop" : "Send";
+}
+
+/* Reads an event stream: each event's name ("" for the engine's own) and
+   data, to `onEvent`. */
+async function readEvents(response, onEvent) {
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let end;
+    while ((end = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      let name = "", data = "";
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) name = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trimStart();
+      }
+      if (data) onEvent(name, data);
+    }
+  }
+}
+
+async function sendChat(text) {
+  const key = selected.model, m = current && findModel(current, key);
+  if (!m) return;
+  if (!chats.has(key)) chats.set(key, []);
+  const turns = chats.get(key);
+  turns.push({ role: "user", content: text });
+  const reply = { role: "assistant", content: "", thinking: "" };
+  const messages = turns.filter((t) => !t.error).map((t) => ({ role: t.role, content: t.content }));
+  turns.push(reply);
+  chatAbort = new AbortController();
+  drawChat();
+  try {
+    const response = await fetch("/api/v1/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" }, signal: chatAbort.signal,
+      body: JSON.stringify({ engine: m.engine, endpoint: m.endpoint, model: m.id, messages }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `status ${response.status}`);
+    await readEvents(response, (name, data) => {
+      if (name === "steth") reply.numbers = JSON.parse(data);
+      else if (name === "error") reply.error = JSON.parse(data).error;
+      else if (data !== "[DONE]") {
+        const delta = JSON.parse(data).choices?.[0]?.delta || {};
+        reply.content += delta.content || "";
+        reply.thinking += delta.reasoning_content || "";
+      }
+      if (chatShown === key) drawChat();
+    });
+  } catch (e) {
+    reply.error = e.name === "AbortError" ? "Stopped" : e.message;
+  }
+  chatAbort = null;
+  if (chatShown === key) drawChat();
+}
+
+$("chat-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (chatAbort) { chatAbort.abort(); return; }
+  const text = $("prompt").value.trim();
+  if (!text) return;
+  $("prompt").value = "";
+  sendChat(text);
+});
+$("prompt").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("chat-form").requestSubmit(); }
+});
+$("chat-clear").addEventListener("click", () => {
+  if (chatAbort) return;
+  chats.delete(selected.model);
+  drawChat();
+});
+
 /* ---- the poll ---- */
 let current = null;
 
@@ -867,6 +1160,8 @@ async function poll() {
 }
 addEventListener("resize", () => current && drawPools(current));
 poll();
+pollControls();
+pollLaunch();
 </script>
 </body>
 </html>

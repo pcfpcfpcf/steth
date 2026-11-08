@@ -1,5 +1,6 @@
 // Command steth serves a page that shows what the inference engines on a box
-// have loaded, where, and how they are doing.
+// have loaded, where, and how they are doing, and lets the person at the box
+// chat with a model, load and unload models, and start and stop engines.
 package main
 
 import (
@@ -22,6 +23,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/engine/llamacpp"
 	"github.com/pcfpcfpcf/steth/internal/engine/ollama"
 	"github.com/pcfpcfpcf/steth/internal/engine/vllm"
+	"github.com/pcfpcfpcf/steth/internal/launch"
 	"github.com/pcfpcfpcf/steth/internal/web"
 )
 
@@ -83,6 +85,7 @@ func main() {
 	listen := flag.String("listen", defaultListen, "address to serve the page on")
 	flag.Var(&sources, "target", "an engine discovery cannot find, such as one on another machine, as ENGINE=URL; repeat for more")
 	find := flag.Bool("discover", true, "find the engines running on this machine")
+	config := flag.String("config", "", "a JSON file of launch profiles, the engines the page may start")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
@@ -108,15 +111,60 @@ func main() {
 	c := collector.New(registry.Sources, readTimeout)
 	go c.Run(ctx, pollInterval)
 
-	server := &http.Server{Addr: *listen, Handler: web.Handler(c.State)}
+	actions, err := actionsFor(*listen, *config, registry)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "steth: %v\n", err)
+		os.Exit(2)
+	}
+	server := &http.Server{Addr: *listen, Handler: web.Handler(c.State, actions)}
 	go func() {
 		<-ctx.Done()
 		server.Shutdown(context.Background())
 	}()
+	if actions != nil && actions.Launcher != nil {
+		// Every engine steth started stops with it.
+		defer actions.Launcher.StopAll()
+	}
 	log.Printf("steth: serving on http://%s", *listen)
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("steth: cannot serve on %s: %v", *listen, err)
+		log.Printf("steth: cannot serve on %s: %v", *listen, err)
+		stop()
+		if actions != nil && actions.Launcher != nil {
+			actions.Launcher.StopAll()
+		}
+		os.Exit(1)
 	}
+}
+
+// actionsFor is what the page may do: on a loopback address, chat, load and
+// unload, and with a config file start and stop engines; elsewhere nothing.
+func actionsFor(listen, config string, registry *discover.Registry) (*web.Actions, error) {
+	if !web.Loopback(listen) {
+		if config != "" {
+			return nil, fmt.Errorf("--config needs a loopback --listen address: steth takes actions only from this machine")
+		}
+		log.Printf("steth: %s is not a loopback address, so the page only monitors", listen)
+		return nil, nil
+	}
+	actions := &web.Actions{
+		Sources: func() []web.Source {
+			var out []web.Source
+			for _, s := range registry.Sources() {
+				out = append(out, s)
+			}
+			return out
+		},
+		Client: &http.Client{},
+	}
+	if config != "" {
+		profiles, err := launch.Load(config)
+		if err != nil {
+			return nil, err
+		}
+		actions.Launcher = launch.New(profiles)
+		log.Printf("steth: %d launch profile(s) from %s", len(profiles), config)
+	}
+	return actions, nil
 }
 
 // discoverEvery looks for engines again every discoverInterval until ctx

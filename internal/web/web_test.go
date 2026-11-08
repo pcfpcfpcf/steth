@@ -1,21 +1,26 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/pcfpcfpcf/steth/internal/engine/control"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
 
+func current() state.State {
+	return state.State{Schema: state.Schema, Models: []state.Model{{ID: "m", Engine: "fake", Endpoint: "http://127.0.0.1:1"}}}
+}
+
 func get(path string) *httptest.ResponseRecorder {
-	h := Handler(func() state.State {
-		return state.State{Schema: state.Schema, Models: []state.Model{{ID: "m"}}}
-	})
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+	Handler(current, nil).ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
 	return w
 }
 
@@ -37,8 +42,234 @@ func TestServesPage(t *testing.T) {
 	}
 }
 
+// The page's policy names its script's hash, so the script runs and no
+// other does; a page whose script changed gets a new hash.
+func TestPagePolicyNamesTheScript(t *testing.T) {
+	policy := get("/").Header().Get("Content-Security-Policy")
+	if !strings.Contains(policy, "'sha256-"+scriptHash(page)+"'") || strings.Contains(policy, "script-src 'unsafe-inline'") {
+		t.Errorf("policy %q", policy)
+	}
+	if scriptHash([]byte("<script>a</script>")) == scriptHash([]byte("<script>b</script>")) {
+		t.Error("two scripts share a hash")
+	}
+}
+
 func TestUnknownPathIsNotFound(t *testing.T) {
 	if w := get("/nowhere"); w.Code != http.StatusNotFound {
 		t.Errorf("status %d, expected 404", w.Code)
+	}
+}
+
+// fakeEngine is a source with controls that records what it was asked.
+type fakeEngine struct {
+	asked []string
+	none  bool
+}
+
+func (f *fakeEngine) Engine() string   { return "fake" }
+func (f *fakeEngine) Endpoint() string { return "http://127.0.0.1:1" }
+func (f *fakeEngine) Available(context.Context) ([]string, error) {
+	if f.none {
+		return nil, control.ErrNone
+	}
+	return []string{"m", "n"}, nil
+}
+func (f *fakeEngine) Load(_ context.Context, model string) error {
+	f.asked = append(f.asked, "load "+model)
+	return nil
+}
+func (f *fakeEngine) Unload(_ context.Context, model string) error {
+	if model == "busy" {
+		return errors.New("the engine said no")
+	}
+	f.asked = append(f.asked, "unload "+model)
+	return nil
+}
+
+// plain is a source without controls.
+type plain struct{}
+
+func (plain) Engine() string   { return "plain" }
+func (plain) Endpoint() string { return "http://127.0.0.1:2" }
+
+func withActions(engine *fakeEngine) http.Handler {
+	return Handler(current, &Actions{
+		Sources: func() []Source { return []Source{plain{}, engine} },
+		Client:  http.DefaultClient,
+	})
+}
+
+// act sends an action as the page on 127.0.0.1:7474 would, with `edit`
+// changing the request first.
+func act(h http.Handler, method, path, body string, edit func(*http.Request)) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(method, path, strings.NewReader(body))
+	r.Host = "127.0.0.1:7474"
+	if method == http.MethodPost {
+		r.Header.Set("Origin", "http://127.0.0.1:7474")
+		r.Header.Set("Content-Type", "application/json")
+	}
+	if edit != nil {
+		edit(r)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+
+const loadM = `{"engine":"fake","endpoint":"http://127.0.0.1:1","model":"m"}`
+
+func TestGuardRefusesOtherPagesAndNames(t *testing.T) {
+	engine := &fakeEngine{}
+	h := withActions(engine)
+	for name, edit := range map[string]func(*http.Request){
+		"a foreign page": func(r *http.Request) { r.Header.Set("Origin", "http://evil.example") },
+		"no origin":      func(r *http.Request) { r.Header.Del("Origin") },
+		"a rebound name": func(r *http.Request) {
+			r.Host = "evil.example:7474"
+			r.Header.Set("Origin", "http://evil.example:7474")
+		},
+		"a LAN address":             func(r *http.Request) { r.Host = "192.168.1.5:7474"; r.Header.Set("Origin", "http://192.168.1.5:7474") },
+		"an origin on another port": func(r *http.Request) { r.Header.Set("Origin", "http://127.0.0.1:8000") },
+	} {
+		if w := act(h, http.MethodPost, "/api/v1/load", loadM, edit); w.Code != http.StatusForbidden {
+			t.Errorf("%s: status %d, expected 403", name, w.Code)
+		}
+	}
+	if w := act(h, http.MethodGet, "/api/v1/controls", "", func(r *http.Request) { r.Host = "evil.example:7474" }); w.Code != http.StatusForbidden {
+		t.Errorf("a rebound name reading controls: status %d, expected 403", w.Code)
+	}
+	if len(engine.asked) != 0 {
+		t.Errorf("the engine was asked %v", engine.asked)
+	}
+	// The state reads as before, from anywhere.
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/state", nil)
+	r.Host = "evil.example:7474"
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("state: status %d", w.Code)
+	}
+}
+
+func TestGuardTakesLocalhost(t *testing.T) {
+	engine := &fakeEngine{}
+	w := act(withActions(engine), http.MethodPost, "/api/v1/load", loadM, func(r *http.Request) {
+		r.Host = "localhost:7474"
+		r.Header.Set("Origin", "http://localhost:7474")
+	})
+	if w.Code != http.StatusOK || len(engine.asked) != 1 {
+		t.Errorf("status %d, asked %v", w.Code, engine.asked)
+	}
+}
+
+func TestBodyMustBeSmallKnownJSON(t *testing.T) {
+	h := withActions(&fakeEngine{})
+	for name, c := range map[string]struct {
+		body string
+		edit func(*http.Request)
+	}{
+		"form":          {loadM, func(r *http.Request) { r.Header.Set("Content-Type", "application/x-www-form-urlencoded") }},
+		"unknown field": {`{"engine":"fake","endpoint":"http://127.0.0.1:1","model":"m","url":"http://x"}`, nil},
+		"too large":     {`{"engine":"` + strings.Repeat("a", bodyMax) + `"}`, nil},
+	} {
+		if w := act(h, http.MethodPost, "/api/v1/load", c.body, c.edit); w.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, expected 400", name, w.Code)
+		}
+	}
+}
+
+// Without actions -- steth bound off loopback -- no action route exists.
+func TestNoActionsOffLoopback(t *testing.T) {
+	h := Handler(current, nil)
+	for _, path := range []string{"/api/v1/load", "/api/v1/chat", "/api/v1/launch/start"} {
+		if w := act(h, http.MethodPost, path, loadM, nil); w.Code != http.StatusNotFound && w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s: status %d, expected no route", path, w.Code)
+		}
+	}
+}
+
+func TestLoopback(t *testing.T) {
+	for listen, want := range map[string]bool{
+		"127.0.0.1:7474": true, "localhost:7474": true, "[::1]:7474": true, "127.0.0.2:1": true,
+		"0.0.0.0:7474": false, ":7474": false, "192.168.1.5:7474": false, "box.lan:7474": false,
+	} {
+		if got := Loopback(listen); got != want {
+			t.Errorf("%s: %v, expected %v", listen, got, want)
+		}
+	}
+}
+
+func TestControlsListOnlyEnginesThatHaveThem(t *testing.T) {
+	w := act(withActions(&fakeEngine{}), http.MethodGet, "/api/v1/controls", "", nil)
+	var got []controllable
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Engine != "fake" || len(got[0].Models) != 2 {
+		t.Errorf("controls %s", w.Body)
+	}
+	w = act(withActions(&fakeEngine{none: true}), http.MethodGet, "/api/v1/controls", "", nil)
+	if strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Errorf("a server without controls is listed: %s", w.Body)
+	}
+}
+
+func TestLoadAndUnloadGoToTheEngine(t *testing.T) {
+	engine := &fakeEngine{}
+	h := withActions(engine)
+	if w := act(h, http.MethodPost, "/api/v1/load", loadM, nil); w.Code != http.StatusOK {
+		t.Errorf("load: status %d %s", w.Code, w.Body)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/unload", strings.Replace(loadM, `"m"`, `"busy"`, 1), nil); w.Code != http.StatusBadGateway ||
+		!strings.Contains(w.Body.String(), "the engine said no") {
+		t.Errorf("a refused unload: status %d %s", w.Code, w.Body)
+	}
+	if strings.Join(engine.asked, ",") != "load m" {
+		t.Errorf("asked %v", engine.asked)
+	}
+	for name, body := range map[string]string{
+		"an address steth does not read": `{"engine":"fake","endpoint":"http://10.0.0.1:1","model":"m"}`,
+		"an engine without controls":     `{"engine":"plain","endpoint":"http://127.0.0.1:2","model":"m"}`,
+	} {
+		if w := act(h, http.MethodPost, "/api/v1/load", body, nil); w.Code != http.StatusNotFound {
+			t.Errorf("%s: status %d, expected 404", name, w.Code)
+		}
+	}
+}
+
+// A chat goes only to a model steth reads; the engine's events reach the
+// page, then the reply's numbers.
+func TestChatStreamsThenNumbers(t *testing.T) {
+	engine := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, `data: {"choices":[{"delta":{"content":"hi"}}]}`+"\n\n")
+		io.WriteString(w, `data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":1}}`+"\n\n")
+		io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	defer engine.Close()
+	h := Handler(func() state.State {
+		return state.State{Models: []state.Model{{ID: "m", Engine: "fake", Endpoint: engine.URL}}}
+	}, &Actions{Sources: func() []Source { return nil }, Client: engine.Client()})
+
+	body := `{"engine":"fake","endpoint":"` + engine.URL + `","model":"m","messages":[{"role":"user","content":"hello"}]}`
+	w := act(h, http.MethodPost, "/api/v1/chat", body, nil)
+	out := w.Body.String()
+	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "text/event-stream" ||
+		!strings.Contains(out, `"content":"hi"`) || !strings.Contains(out, "event: steth\ndata: {") {
+		t.Errorf("status %d, body %s", w.Code, out)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/chat", strings.Replace(body, `"model":"m"`, `"model":"other"`, 1), nil); w.Code != http.StatusNotFound {
+		t.Errorf("a model steth does not read: status %d", w.Code)
+	}
+}
+
+func TestLaunchWithoutConfig(t *testing.T) {
+	h := withActions(&fakeEngine{})
+	if w := act(h, http.MethodGet, "/api/v1/launch", "", nil); strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Errorf("status without profiles: %s", w.Body)
+	}
+	if w := act(h, http.MethodPost, "/api/v1/launch/start", `{"name":"x"}`, nil); w.Code != http.StatusNotFound ||
+		!strings.Contains(w.Body.String(), "--config") {
+		t.Errorf("start without profiles: status %d %s", w.Code, w.Body)
 	}
 }
