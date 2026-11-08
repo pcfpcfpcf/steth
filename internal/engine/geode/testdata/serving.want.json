@@ -1,0 +1,60 @@
+{
+  "pools": [
+    {
+      "name": "vram",
+      "capacity_bytes": 4007642112,
+      "used_bytes": null
+    },
+    {
+      "name": "dram",
+      "capacity_bytes": 25644535808,
+      "used_bytes": null
+    },
+    {
+      "name": "nvme",
+      "capacity_bytes": null,
+      "used_bytes": null
+    }
+  ],
+  "models": [
+    {
+      "id": "Qwen3.5-0.8B",
+      "engine": "",
+      "endpoint": "",
+      "state": "serving",
+      "queued": 0,
+      "kv_tokens": 116,
+      "context": 333,
+      "max_context": 262144,
+      "pools": {
+        "dram": {
+          "weight_bytes": 270172160,
+          "kv_bytes_per_token": 0
+        },
+        "nvme": {
+          "weight_bytes": 0,
+          "kv_bytes_per_token": 0
+        },
+        "vram": {
+          "weight_bytes": 829557248,
+          "kv_bytes_per_token": 12288
+        }
+      },
+      "running": null,
+      "decode_tps": 9.248768769175467,
+      "prefill_tps": 28.637095536517446,
+      "unloads_at": null,
+      "config": null,
+      "fidelity": {
+        "context": "measured",
+        "decode_tps": "derived",
+        "kv_tokens": "measured",
+        "max_context": "measured",
+        "pools": "measured",
+        "prefill_tps": "derived",
+        "queued": "measured"
+      },
+      "speed_history": null
+    }
+  ]
+}

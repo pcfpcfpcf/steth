@@ -46,3 +46,24 @@ func TestProbe(t *testing.T) {
 		}
 	}
 }
+
+// Speeds come from the sums between two reads, recorded from a running
+// server 3 s apart while it answered one request: 14 prompt tokens in
+// 0.49 s, 22 decoded in 2.38 s. The first read has no speed.
+func TestSpeedsFromSums(t *testing.T) {
+	server := enginetest.Serve(t, map[string]string{"/v1/pool": "testdata/serving.1.json"})
+	source := New(server.URL, server.Client())
+	first, err := source.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := first.Models[0]; m.DecodeTPS != nil || m.PrefillTPS != nil {
+		t.Fatalf("first read has speeds %v, %v; expected none", *m.DecodeTPS, *m.PrefillTPS)
+	}
+	server.Answer("/v1/pool", "testdata/serving.2.json")
+	second, err := source.Read(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	enginetest.Match(t, second, "testdata/serving.want.json")
+}
