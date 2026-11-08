@@ -88,7 +88,7 @@ for the rest, rather than one that fails.
 | llama.cpp, router mode | `GET /models` (the `/v1/models` handler): every model the router knows, its `--models-dir` and the Hugging Face cache | `POST /models/load`; returns at once, the model listed `loading` until ready | `POST /models/unload`; returns at once |
 | llama.cpp, one model | — | — | — |
 | vLLM, with `VLLM_SERVER_DEV_MODE=1` | its one model, once `GET /is_sleeping` answers | `POST /wake_up` | `POST /sleep?level=1`: weights to host memory, requests in flight aborted; works only with `--enable-sleep-mode`, which steth does not check |
-| geode | unknown: so far only launched, as `geode serve MODEL` | asked of geode | asked of geode |
+| geode, with `--models-dir` | `GET /models/available`: each file its `--models-dir` allows, by resolved path, and `GET /v1/models`: each model's `state` and `path` | `POST /models/load` with the file's path; answers 202, the model `loading` until ready | `POST /models/unload` with the model's id; drains it, `unloading` until gone |
 
 The interface is optional: an adapter that lacks the controls doesn't have
 the methods, so a new engine starts read-only. A llama.cpp server of one
@@ -196,7 +196,7 @@ address, steth serves no action routes, and `--config` is refused.
 
 | route | body | answer |
 |---|---|---|
-| `GET /api/v1/controls` | — | `[{engine, endpoint, models, error?}]`: every engine with controls and the models it could load or unload |
+| `GET /api/v1/controls` | — | `[{engine, endpoint, models, files?, error?}]`: every engine with controls and the models it could load or unload; `files`, from an engine that loads by file (geode), is `[{path, model?, state?, error?}]`, each file it may open and what it is now (`loading`, `ready`, `failed`, `unloading`) |
 | `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`; 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
 | `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, running, model?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null |

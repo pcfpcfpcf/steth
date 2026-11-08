@@ -56,7 +56,10 @@ type controllable struct {
 	Engine   string   `json:"engine"`
 	Endpoint string   `json:"endpoint"`
 	Models   []string `json:"models"`
-	Error    string   `json:"error,omitempty"`
+	// Files are the model files an engine that loads by file may open,
+	// and what each is now; absent for an engine that loads by name.
+	Files []control.File `json:"files,omitempty"`
+	Error string         `json:"error,omitempty"`
 }
 
 // controls lists every engine whose adapter has controls and whose server
@@ -78,6 +81,12 @@ func (a *Actions) controls(w http.ResponseWriter, r *http.Request) {
 		entry := controllable{Engine: s.Engine(), Endpoint: s.Endpoint(), Models: models}
 		if entry.Models == nil {
 			entry.Models = []string{}
+		}
+		if f, ok := s.(control.Files); ok && err == nil {
+			entry.Files, err = f.Files(ctx)
+			if entry.Files == nil {
+				entry.Files = []control.File{}
+			}
 		}
 		if err != nil {
 			entry.Error = err.Error()

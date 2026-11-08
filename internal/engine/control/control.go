@@ -20,3 +20,21 @@ type Controls interface {
 	Load(ctx context.Context, model string) error
 	Unload(ctx context.Context, model string) error
 }
+
+// File is a model file an engine may open, and what it does with it now.
+type File struct {
+	// Path is the file as the engine resolved it, every link followed.
+	Path string `json:"path"`
+	// Model is the id the engine serves the file as, once it loads it.
+	Model string `json:"model,omitempty"`
+	// State is loading, ready, failed or unloading; "" when not loaded.
+	State string `json:"state,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+// Files is what an adapter offers when its engine loads models by file:
+// Load takes the file's path, Unload the model's id.
+type Files interface {
+	// Files lists the model files the server may open, as it lists them.
+	Files(ctx context.Context) ([]File, error)
+}

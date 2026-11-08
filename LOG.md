@@ -4,6 +4,16 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **geode loads and unloads by file,** to the contract agreed with the
+  session working on geode: `/models/available` lists the files its
+  `--models-dir` allows, `/models/load` takes a path and answers 202,
+  `/v1/models` gives each model's `state` and `path`, `/models/unload` takes
+  the id. An engine that loads by file lists its files, each with what it
+  is now, in `/api/v1/controls`. A geode whose `/v1/models` names no path
+  yet still marks a file it serves, through `served`. Written against the
+  contract before geode has the load routes; checked live only that far
+  (its files listed, the served one marked; a load answers 404).
+
 - **Model files come from places in the config,** not only from each
   profile's list. Asked for by the owner: a model should be added by its
   directory or file. A top-level `models` lists directories and `.gguf`
