@@ -1058,7 +1058,7 @@ function drawSources(all) {
 /* null until steth says whether it takes actions; false when it only
    monitors (bound off loopback). */
 let actionsOn = null;
-const CONTROLS_MS = 5000, LAUNCH_MS = 2000;
+const CONTROLS_MS = 5000, LAUNCH_MS = 2000, CHANGING_MS = 1000;
 /* The speed chart's frame, in its viewBox's units; its floor in tok/s, so
    a slow model's line does not fill the chart. */
 const CHART = { width: 440, top: 16, bottom: 58, rows: 2, floor: 5, headroom: 1.15 };
@@ -1094,9 +1094,12 @@ async function refreshControls() {
   } catch (e) { controls = []; }
   drawWorkspace();
 }
+/* Read more often while an engine loads or unloads a file, so its row
+   turns as soon as the engine says. */
+const changing = () => controls.some((c) => c.files?.some((f) => f.state === "loading" || f.state === "unloading"));
 async function pollControls() {
   await refreshControls();
-  setTimeout(pollControls, CONTROLS_MS);
+  setTimeout(pollControls, changing() ? CHANGING_MS : CONTROLS_MS);
 }
 async function refreshLaunch() {
   try { profiles = (await getAction("/api/v1/launch")) || []; } catch (e) { profiles = []; }

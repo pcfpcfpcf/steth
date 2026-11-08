@@ -4,6 +4,16 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **Load and unload by file checked live** against geode's routes (geode
+  branch `steth`, d33c40f) on port 8091: geode started from a file's row
+  with `--models-dir` from the place (up in 3 s); the 4B loaded from its
+  row, loading then ready in about 3 s; a chat with it (decode 6.6 tok/s,
+  prefill 11.8 tok/s, both from geode); a broken 19 KB file failed with
+  geode's reason and its row offered *Load again* and *Unload*; both
+  unloaded from the page, and geode's saved set for the port left empty.
+  The page reads the controls every second while a file loads or
+  unloads, as a row lagged up to five seconds.
+
 - **A failed load stays until the user clears it,** as geode keeps the
   failed slot and its error: a load of the same path replaces it, an
   unload of its id frees it. The file's row offers both.
