@@ -91,8 +91,10 @@ for the rest, rather than one that fails.
 | vLLM, with `VLLM_SERVER_DEV_MODE=1` | its one model, once `GET /is_sleeping` answers | `POST /wake_up` | `POST /sleep?level=1`: weights to host memory, requests in flight aborted; works only with `--enable-sleep-mode`, which steth does not check |
 | geode, with `--models-dir` | `GET /models/available`: each file its `--models-dir` allows, by resolved path, and `GET /v1/models`: each model's `state` and `path` | `POST /models/load` with the file's path; answers 202, the model `loading` until ready | `POST /models/unload` with the model's id; drains it, `unloading` until gone |
 
-geode lists a split model's parts as separate files; steth lists the model
-once and loads it by its first part, which neither side has tried yet.
+geode (from d25f890 on its `steth` branch) lists a split model once, by its
+first part with the bytes of all parts, as steth does, and loads the set
+from any part's path under the first part's id. Checked in geode on a model
+split in eight; not yet through steth's page.
 
 The interface is optional: an adapter that lacks the controls doesn't have
 the methods, so a new engine starts read-only. A llama.cpp server of one

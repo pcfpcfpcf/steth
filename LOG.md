@@ -8,9 +8,10 @@ Decisions as they are made, newest first.
   once begun, so steth's reply says `loading` or `unloading` for it, not
   `loaded`; the page already waits on the model's state.
 
-- **A split model loads by its first part, untried.** geode lists each
-  part as a file of its own and has not tested a load from the first;
-  steth keeps sending that part's path until it has.
+- **A split model loads by its first part.** geode lists each set once by
+  its first part, with all parts' bytes, and loads it from any part's
+  path; checked in geode on a model split in eight (geode d25f890), not
+  yet through steth's page. steth needed no change.
 
 - **Load and unload by file checked live** against geode's routes (geode
   branch `steth`, d33c40f) on port 8091: geode started from a file's row
