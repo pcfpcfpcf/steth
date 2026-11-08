@@ -29,8 +29,9 @@ Needs Go 1.24 or later.
     make        # vet, test (with the race detector), build ./steth
     ./steth
 
-Then open http://127.0.0.1:7474. Click a model for its speeds over the last
-two minutes, its requests, and its settings as the engine reports them; a
+Then open http://127.0.0.1:7474. The page leads with the memory pools and
+the models in them; click a model for its speeds over the last two minutes,
+its requests, and its settings as the engine reports them; a
 dash is something its engine does not say, and `derived` marks a number
 steth computed from what it does say.
 
@@ -59,17 +60,24 @@ Actions answer only on a loopback `--listen` address (the default), and only
 to steth's own page: a request from another site or through a name that is
 not this machine's gets 403. Bound elsewhere, steth only watches.
 
-- **Chat.** Click a model and use *Try it*. The prompt goes to that model
+Below the models, a toolbar picks a model and, with launch profiles, an
+engine; under it are the conversation and that model's pulse.
+
+- **Chat.** Pick a model in the toolbar, or *Talk to it* from its details,
+  and send a prompt. It goes to that model
   alone through the OpenAI chat API every engine serves, and the reply
   shows its own numbers: seconds to first text, and decode and prefill
   speed as the engine timed them (geode, llama.cpp) or as steth works them
   out from token counts (`derived`). They describe one reply, so they never
-  feed the model's speed above.
-- **Load and unload.** The *Engines* section lists what Ollama, a llama.cpp
-  router (`llama serve --models-dir`), or vLLM started with
-  `VLLM_SERVER_DEV_MODE=1` could load, with a button each; vLLM's unload
-  is its sleep, which also needs `--enable-sleep-mode`. Engines without the
-  controls get none.
+  feed the model's speed, which the pulse charts beside them. Temperature
+  and reply length are the engine's own unless set under *Generation
+  settings*; each model keeps its own conversation while the page is open.
+- **Load and unload.** The toolbar's model list also holds what Ollama, a
+  llama.cpp router (`llama serve --models-dir`), or vLLM started with
+  `VLLM_SERVER_DEV_MODE=1` could load, marked `not loaded`, and a *Load* or
+  *Unload* button for the one picked; vLLM's unload
+  is its sleep, which also needs `--enable-sleep-mode`. A model whose engine has no
+  controls gets no button.
 - **Start and stop engines.** `--config steth.json` names launch profiles:
 
       {"launch": [
@@ -79,7 +87,8 @@ not this machine's gets 403. Bound elsewhere, steth only watches.
          "dir": "/srv/llama", "env": {"LLAMA_CACHE": "/srv/cache"}}
       ]}
 
-  `{model}` becomes the model chosen on the page. steth refuses to start a
+  The toolbar's *Engine* picks a profile and *With* its `{model}`; the
+  engine's log is under the pulse. steth refuses to start a
   profile already running or whose `--port` already answers, keeps each
   engine's last 120 log lines, stops only engines it started, and stops all
   of them when it exits. A started engine appears like any other, through

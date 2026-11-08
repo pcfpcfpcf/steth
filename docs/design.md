@@ -10,8 +10,8 @@ only through each engine's own controls, and only when someone asks.**
 
 Stages 1–7 (monitoring) and 8–11 (managing: launching engines, chat with
 per-reply timings, load and unload, none of it tied to one engine) are
-built. steth's page, with its placement view, stays as it was; the controls
-are added to it.
+built. The page keeps its placement view and model cards on top; the
+controls sit below them in one workspace (see "The page").
 
 ## What it is not
 
@@ -142,9 +142,26 @@ cancels, and reports that reply's numbers:
 | decode, prefill | geode: `timings.decode_tok_s`, `prefill_tok_s`. llama.cpp: `timings.predicted_per_second`, `prompt_per_second` | measured |
 | decode | elsewhere: completion tokens from `usage` (asked for with `stream_options.include_usage`) over the seconds after first text | derived |
 
-These numbers describe one reply steth sent, so they stay in the chat panel
+These numbers describe one reply steth sent, so they stay in the reply pulse
 and never enter `models[].decode_tps`, which covers all traffic. Chats live
 in the page only.
+
+### The page
+
+One page, in order: memory pools (01), models (02), then, where steth takes
+actions, the workspace. Its toolbar picks one model from every engine's
+loaded models and those an engine with controls could load, grouped by
+engine and endpoint, with *Load* or *Unload* for it; and, with launch
+profiles, an engine profile, its `{model}`, *Start* and *Stop*. A line
+under the toolbar says what the last action did, or the engine's refusal.
+Below, the conversation (03) with the model picked, one kept per model, and
+its pulse (04): the last reply's decode, prefill and first text with where
+each came from (`ENGINE`, `DERIVED`), the time this page waited, the
+model's decode speed from the state over two minutes, its state, requests,
+KV and endpoint, and the picked profile's log. Bound off loopback the
+workspace is not drawn and the masthead says `MONITOR ONLY`. Clicking a pool
+or a model opens its details in a drawer, as before, with *Talk to it* for
+a model.
 
 ### Guard
 

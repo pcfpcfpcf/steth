@@ -79,6 +79,21 @@ Decisions as they are made, newest first.
   hand. Both are written and unit-tested; the owner accepted them as they
   are. Owed first when a box exists.
 
+- **The page redone around a workspace.** Asked for by the owner. The
+  pools and models stay on top, unchanged in what they show; the look moves
+  to paper and ink with a serif for figures and mono for labels, with a dark
+  variant. The Engines cards and the chat inside the details drawer are
+  replaced by one toolbar (model, load or unload, engine profile, start or
+  stop), the conversation, and a pulse beside it. Chosen over keeping chat
+  per model in the drawer: a conversation needs room, and its numbers read
+  better next to the model's own speed. The pulse charts the model's decode
+  speed from the state rather than streamed events per second, which would
+  be a new number that is not a token rate. Generation settings are empty
+  by default, so the engine's own apply unless the person sets them. Checked
+  live: Ollama load, chat (decode 21.7 tok/s derived) and unload; a geode
+  profile started, talked to (9.5 tok/s and prefill 31.5 tok/s, both from
+  geode), and stopped; dark mode; 390 px wide with no sideways scroll.
+
 ## 2026-10-26
 
 - **macOS and Windows checked in CI** (run 40380470607): the tests that read
