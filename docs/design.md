@@ -190,7 +190,8 @@ a model. Model files (03), where steth takes actions, shows the
 places (those from the config marked, the others removable), *Add a place*
 to browse to a directory or `.gguf` file, and every model file under them
 with its size. A file's row says what each engine that loads by file does
-with it: in it, loading, failed with why, or *Load into* it (and *Unload*);
+with it: in it with *Unload*, loading, *Load into* it, or failed with why,
+which stays until *Load again* or *Unload* clears it;
 where none lists it, *Start* each stopped profile that takes model files
 with it; a running one started before the place was added is named.
 

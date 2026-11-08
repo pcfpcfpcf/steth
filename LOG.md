@@ -4,6 +4,10 @@ Decisions as they are made, newest first.
 
 ## 2026-11-08
 
+- **A failed load stays until the user clears it,** as geode keeps the
+  failed slot and its error: a load of the same path replaces it, an
+  unload of its id frees it. The file's row offers both.
+
 - **Places of model files picked on the page,** asked for by the owner,
   built beside geode's runtime loads (agreed with the session working on
   geode). *Model files* browses this machine one directory at a time

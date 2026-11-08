@@ -1368,8 +1368,10 @@ function fileActions(f) {
     else if (cf.state === "loading") out.push(`<span class="file-state">LOADING IN ${escape(engineAt(c).toUpperCase())}…</span>`);
     else if (cf.state === "unloading") out.push(`<span class="file-state quiet">UNLOADING FROM ${escape(engineAt(c).toUpperCase())}…</span>`);
     else {
+      // A failed load stays until it is loaded again or unloaded.
       if (cf.state === "failed") out.push(`<span class="file-state failed">${escape(cf.error || "the load failed")}</span>`);
-      out.push(fileButton("load", `Load into ${engineAt(c)}`, { ...at, model: cf.path }, true));
+      out.push(fileButton("load", cf.state === "failed" ? "Load again" : `Load into ${engineAt(c)}`, { ...at, model: cf.path }, true));
+      if (cf.state === "failed" && cf.model) out.push(fileButton("unload", "Unload", { ...at, model: cf.model }));
     }
   }
   if (out.length === 0) {
