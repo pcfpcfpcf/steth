@@ -2,6 +2,83 @@
 
 Decisions as they are made, newest first.
 
+## 2026-11-08
+
+- **steth will manage engines too** (docs/design.md, stages 8–11; approved,
+  and built the same day): launch engines, chat, per-reply timings, load
+  and unload. This reverses "not a model manager". Objection raised and
+  overruled: a manager is a bigger product than a monitor, and the controls
+  are not uniform across engines. What keeps it neutral: load and unload go
+  through each engine's own HTTP controls, shown only where they exist;
+  launch runs argv from a config file, never from the browser; chat speaks
+  the OpenAI API every engine has. Still rejected: a proxy in other clients'
+  path (the Ollama speed decision stands); per-reply chat speeds feeding
+  `decode_tps`, since they describe one request steth sent. The page and its
+  placement view stay as they are.
+- **Load and unload checked live on Ollama and a llama.cpp router** (stage
+  10, adapters only; no route or button yet). Ollama 0.21.2 listed its nine
+  models; a load of gemma3:1b returned in 2.8 s with the model in memory,
+  an unload in 2 ms with the model gone from `/api/ps` within a second. On
+  a GPU nearly filled by other processes a first load failed with Ollama's
+  own 500, `llama runner process has terminated`, which steth passes on as
+  it does every engine's refusal. The router (b10217, `--models-dir`,
+  `--no-models-autoload`) answers both at once with `{"success":true}` and
+  then lists the model `loading`, or still `loaded`, until it is done;
+  loading a running model is a 400 `model is already running`, unloading a
+  stopped one `model is not running`, an unknown name a 404
+  `File Not Found`. `/models` and `/v1/models` are one handler, and list
+  models from the Hugging Face cache beside `--models-dir`. A server of one
+  model answers `control.ErrNone` and is sent nothing. vLLM is written from
+  its source at commit 442f3d9, its live check owed with the rest: the sleep
+  routes need `VLLM_SERVER_DEV_MODE=1` alone, and `--enable-sleep-mode`
+  only for sleeping to work, so a dev-mode server without it shows controls
+  that fail. Only `/server_info` says whether it is on, and it gathers the
+  whole environment (`collect_env`) to answer, so steth does not ask. `/sleep` aborts requests in flight
+  by default, as a llama.cpp unload does. The design's table said vLLM's
+  routes needed both settings; corrected.
+
+- **geode sums its passes; steth derives the speeds.** On geode's `steth`
+  branch `/v1/pool` gives each model `prefill_tokens`, `prefill_seconds`,
+  `decode_tokens` and `decode_seconds`, totals since it started, rather than
+  a rate over a window geode would have to choose. steth divides the change
+  between two reads and marks the speed `derived`; live it read 11.08 tok/s
+  where geode's own stream said 11.1. A model idle between reads gets no
+  speed rather than zero. The geode submodule in geode's own repo is not
+  bumped.
+- **The guard.** Actions exist only on a loopback `--listen`; there every
+  action route needs a loopback Host (against DNS rebinding) and a POST
+  also needs Origin equal to `http://` plus that Host, a JSON body under
+  1 MB, and no unknown fields. The page's CSP names its one inline script
+  by hash, so nothing injected runs. `/api/v1/state` is unchanged, `ACAO *`
+  included: reading was always open to any tool. Off loopback `--config` is
+  an error, not ignored, so nobody believes they can launch from there.
+- **Chat.** geode sent no `usage` and ended `[DONE]` with a NUL; both fixed
+  on its `steth` branch, the recorded stream is from before. Ollama honours
+  `stream_options.include_usage`; llama.cpp puts `timings` on the usage
+  chunk. Reasoning text counts as first text, since the model has started
+  answering. The engine's own timings are used where it gives them (geode,
+  llama.cpp); otherwise decode is (completion tokens − 1) over the time from
+  first text to the end, marked `derived`.
+- **Actions ignore the read client's timeout.** Discovered engines are read
+  with a 500 ms client; the first load through the page failed on it. A
+  POST copies the client without its timeout and is bounded by its context
+  (five minutes for a load), which a test holds.
+- **Launch.** A stopped engine's last run, exit and log stay on the page
+  until it is started again. A profile is refused if it runs or its
+  `--port` answers, so steth never fights another server for a port; a
+  child gets its own process group and SIGINT, SIGKILL after 5 s, on
+  Windows `taskkill /T /F` (not yet run there). steth stops every engine it
+  started when it exits, also when its listener fails.
+- **enginetest records POSTs**, so the control tests check what was sent
+  against the same recorded answers the read tests use.
+
+- **Stages 10 and 11 accepted without two live checks.** vLLM's load and
+  unload have not run against a server: the CPU build of vLLM may not
+  support sleeping, and the GPU build needs compute capability 7.0, the box
+  has 5.0. Launching has not run on Windows; no Windows machine was at
+  hand. Both are written and unit-tested; the owner accepted them as they
+  are. Owed first when a box exists.
+
 ## 2026-10-26
 
 - **macOS and Windows checked in CI** (run 40380470607): the tests that read

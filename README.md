@@ -1,18 +1,23 @@
 # steth
 
-One engine-neutral, zero-config view of a box's models: memory split, KV
-fill, speeds, demand, config.
+One engine-neutral page to watch and manage a box's models: memory split,
+KV fill, speeds, demand, config; chat with a model, load and unload models,
+start and stop engines.
 
 steth reads what the inference engines on a box already report and draws it
 on one page: each memory pool (GPU, host memory, drive) divided among the
-models that hold it, each model's KV cache, and what each model is doing. It
-never loads, unloads or configures a model.
+models that hold it, each model's KV cache, and what each model is doing.
+Watching needs no setup. The person at the box can also act from the page,
+always through each engine's own controls and only when asked: try a model
+with a prompt, load or unload a model where the engine can, and start or
+stop engines from launch profiles in a config file. steth never acts on its
+own and never changes an engine's settings.
 
 ## Engines
 
 | engine | reads | status |
 |---|---|---|
-| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue; no speed yet. An internal tool, still not out |
+| geode | `GET /v1/pool` | pools, per-model memory, KV cache, state, queue, decode and prefill speed (from geode's `steth` branch on). An internal tool, still not out |
 | Ollama | `GET /api/ps` | per-model GPU and host memory, context length, unload time, model details; no pool sizes, KV split, busy state or speed |
 | llama.cpp (`llama serve`) | `GET /props`, `GET /slots`; in router mode `GET /v1/models` and each loaded model through `?model=` | per-model state, KV tokens held, context, running requests, settings; with `--metrics`, decode and prefill speed and requests waiting; no memory figures from HTTP; from its process where visible. Checked live with build b10217, router mode included |
 | vLLM | `GET /v1/models`, `GET /metrics` | state, requests running and waiting, KV tokens held of the cache's size, decode and prefill speed, cache settings, sleep. Not yet checked against a running server |
@@ -47,6 +52,38 @@ machine on all three.
 
 Any other tool can read the same state from `GET /api/v1/state`; its shape is
 in [docs/schema.md](docs/schema.md).
+
+## Managing
+
+Actions answer only on a loopback `--listen` address (the default), and only
+to steth's own page: a request from another site or through a name that is
+not this machine's gets 403. Bound elsewhere, steth only watches.
+
+- **Chat.** Click a model and use *Try it*. The prompt goes to that model
+  alone through the OpenAI chat API every engine serves, and the reply
+  shows its own numbers: seconds to first text, and decode and prefill
+  speed as the engine timed them (geode, llama.cpp) or as steth works them
+  out from token counts (`derived`). They describe one reply, so they never
+  feed the model's speed above.
+- **Load and unload.** The *Engines* section lists what Ollama, a llama.cpp
+  router (`llama serve --models-dir`), or vLLM started with
+  `VLLM_SERVER_DEV_MODE=1` could load, with a button each; vLLM's unload
+  is its sleep, which also needs `--enable-sleep-mode`. Engines without the
+  controls get none.
+- **Start and stop engines.** `--config steth.json` names launch profiles:
+
+      {"launch": [
+        {"name": "geode", "command": ["geode", "serve", "{model}", "--port", "8080"],
+         "models": ["/models/Qwen3.5-9B-Q4_K_M.gguf"]},
+        {"name": "llama router", "command": ["llama", "serve", "--models-dir", "/models", "--port", "9931"],
+         "dir": "/srv/llama", "env": {"LLAMA_CACHE": "/srv/cache"}}
+      ]}
+
+  `{model}` becomes the model chosen on the page. steth refuses to start a
+  profile already running or whose `--port` already answers, keeps each
+  engine's last 120 log lines, stops only engines it started, and stops all
+  of them when it exits. A started engine appears like any other, through
+  discovery. The page never supplies a command.
 
 To work on the page without running an engine, `cmd/mockengine` answers as
 one from recorded responses (each adapter's `testdata/`); its doc comment

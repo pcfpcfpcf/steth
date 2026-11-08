@@ -19,3 +19,10 @@ First version. One page for the inference engines on a box.
   history, unload time, and settings as the engine reports them; every
   number marked measured or derived, a dash where the engine does not say.
 - `GET /api/v1/state` serves the same state as JSON (docs/schema.md).
+- Manages too, from the page and only on a loopback address: chat with a
+  model and see that reply's first-text time and speeds; load and unload
+  models on Ollama, a llama.cpp router and vLLM in dev mode; start and stop
+  engines from launch profiles in `--config FILE`. Every action goes
+  through the engine's own controls; requests from other sites are refused.
+- geode's decode and prefill speeds, derived from the totals its `steth`
+  branch reports.
