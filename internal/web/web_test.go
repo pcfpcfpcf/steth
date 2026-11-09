@@ -238,6 +238,33 @@ func TestControlsListOnlyEnginesThatHaveThem(t *testing.T) {
 	}
 }
 
+// fileEngine loads by file and may open none, as geode does started
+// without --models-dir.
+type fileEngine struct{ fakeEngine }
+
+func (*fileEngine) Endpoint() string                              { return "http://127.0.0.1:3" }
+func (*fileEngine) Files(context.Context) ([]control.File, error) { return nil, nil }
+
+// The page tells an engine that loads by file from one that loads by name
+// by whether it lists files at all, so an empty list must reach it.
+func TestControlsListAnEmptyFileList(t *testing.T) {
+	h := Handler(current, &Actions{
+		Sources: func() []Source { return []Source{&fakeEngine{}, &fileEngine{}} },
+		Client:  http.DefaultClient,
+	})
+	w := act(h, http.MethodGet, "/api/v1/controls", "", nil)
+	var got []map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil || len(got) != 2 {
+		t.Fatalf("controls %s: %v", w.Body, err)
+	}
+	if files, ok := got[0]["files"]; ok {
+		t.Errorf("an engine that loads by name lists files %s", files)
+	}
+	if files := string(got[1]["files"]); files != "[]" {
+		t.Errorf("an engine that may open no file lists files %q, expected []", files)
+	}
+}
+
 func TestLoadAndUnloadGoToTheEngine(t *testing.T) {
 	engine := &fakeEngine{}
 	h := withActions(engine)

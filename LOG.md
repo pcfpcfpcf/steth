@@ -2,6 +2,15 @@
 
 Decisions as they are made, newest first.
 
+## 2026-11-09
+
+- **A geode that may open no file still lists its files,** as `[]`. The
+  owner saw *No engine can open it* on every file row with geode running:
+  `/api/v1/controls` dropped an empty `files` with `omitempty`, so a geode
+  started without `--models-dir` looked like an engine that loads by name.
+  `omitzero` keeps the empty list and still leaves `files` out for Ollama,
+  llama.cpp and vLLM.
+
 ## 2026-11-08
 
 - **A load that has only begun says so.** geode answers a load or unload

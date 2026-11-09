@@ -67,8 +67,10 @@ type controllable struct {
 	Endpoint string   `json:"endpoint"`
 	Models   []string `json:"models"`
 	// Files are the model files an engine that loads by file may open,
-	// and what each is now; absent for an engine that loads by name.
-	Files []control.File `json:"files,omitempty"`
+	// and what each is now; absent for an engine that loads by name, and
+	// empty, not absent, for one that may open none (omitzero, as
+	// omitempty would drop the empty list too).
+	Files []control.File `json:"files,omitzero"`
 	Error string         `json:"error,omitempty"`
 }
 
