@@ -4,6 +4,15 @@ Decisions as they are made, newest first.
 
 ## 2026-11-09
 
+- **A profile's model may be optional** (`model_optional`). geode serves
+  with no model and stays up, then loads files from the page (from the
+  session working on geode), so one geode profile both starts empty and
+  starts with a file from its row. Leaving `{model}` out takes the flag
+  before it, as `{place}` with no place does, so `-m {model}` goes whole.
+  Opt-in, as a llama.cpp server with no `-m` is a router, not the same
+  server without a model. The toolbar offers *no model* first for such a
+  profile.
+
 - **`{port}` picks a quiet port at each start,** from the profile's `port`
   up, 100 at most. A profile that starts an engine wherever this box has
   room needs it: the owner's geode already holds 8080 and 8082, and a

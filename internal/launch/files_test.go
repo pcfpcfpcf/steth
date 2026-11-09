@@ -116,3 +116,35 @@ func TestPlaceRepeatsWithItsFlag(t *testing.T) {
 		}
 	}
 }
+
+// A profile whose model is optional starts with none, leaving out each
+// argument with {model} and the flag before it; with one, it is as usual.
+func TestModelMayBeLeftOut(t *testing.T) {
+	p := Profile{Name: "geode", ModelOptional: true,
+		Command: []string{"geode", "serve", "{model}", "-m", "{model}", "--models-dir", "{place}", "--port", "{port}"}}
+	if got, want := p.argv("", []string{"/a"}, 8081), []string{"geode", "serve", "--models-dir", "/a", "--port", "8081"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("no model: got %q\nexpected %q", got, want)
+	}
+	if got, want := p.argv("/a/m.gguf", nil, 8081), []string{"geode", "serve", "/a/m.gguf", "-m", "/a/m.gguf", "--port", "8081"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("a model: got %q\nexpected %q", got, want)
+	}
+	if err := p.checkModel("", nil); err != nil {
+		t.Errorf("no model, optional: %v", err)
+	}
+	p.ModelOptional = false
+	if err := p.checkModel("", nil); err == nil {
+		t.Error("no model, required: expected a refusal")
+	}
+
+	echo := helper(t, "optional", "echo", "first", "{model}", "last")
+	echo.ModelOptional = true
+	l := launcher(t, echo)
+	if s := status(t, l, "optional"); !s.ModelOptional {
+		t.Errorf("status %+v; expected it to say the model is optional", s)
+	}
+	start(t, l, "optional", "")
+	waitForLine(t, l, "optional", "last")
+	if log := status(t, l, "optional").Log; !reflect.DeepEqual(log, []string{"first", "last"}) {
+		t.Errorf("log %q; expected the command without {model}", log)
+	}
+}

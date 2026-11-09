@@ -45,6 +45,9 @@ type Profile struct {
 	// Port is where the engine listens: with {port} in the command, the
 	// first port tried; without, a port that must not answer before a start.
 	Port int `json:"port"`
+	// ModelOptional lets the command start with no model too: each argument
+	// with {model} is then left out, with the flag before it.
+	ModelOptional bool `json:"model_optional"`
 }
 
 // Load reads the config file: {"launch": [Profile, ...], "models": [...]}.
@@ -59,7 +62,7 @@ func Load(path string) (Config, error) {
 	if err := decoder.Decode(&file); err != nil {
 		// encoding/json has no typed error for an unknown field.
 		if strings.HasPrefix(err.Error(), "json: unknown field") {
-			return Config{}, fmt.Errorf(`%s: %w; the file holds {"launch": [...], "models": [...]}, and a profile's fields are name, command, models, dir, env and port`, path, err)
+			return Config{}, fmt.Errorf(`%s: %w; the file holds {"launch": [...], "models": [...]}, and a profile's fields are name, command, models, dir, env, port and model_optional`, path, err)
 		}
 		return Config{}, fmt.Errorf("%s: %w", path, err)
 	}
@@ -95,6 +98,8 @@ func validate(c Config) error {
 			return fmt.Errorf(`profile %q has %s but no "port"; give the first port to try, such as "port": 8080`, p.Name, portPlaceholder)
 		case !p.takesModel() && len(p.Models) > 0:
 			return fmt.Errorf(`profile %q lists models but its command has no %s; put %s where the model goes, or drop "models"`, p.Name, modelPlaceholder, modelPlaceholder)
+		case !p.takesModel() && p.ModelOptional:
+			return fmt.Errorf(`profile %q has "model_optional" but its command has no %s; it always starts with none`, p.Name, modelPlaceholder)
 		}
 		named[p.Name] = true
 	}
@@ -121,7 +126,7 @@ func (p Profile) checkModel(model string, choices []string) error {
 		}
 		return nil
 	}
-	if slices.Contains(choices, model) {
+	if slices.Contains(choices, model) || model == "" && p.ModelOptional {
 		return nil
 	}
 	if len(choices) == 0 {
@@ -135,26 +140,42 @@ func (p Profile) checkModel(model string, choices []string) error {
 
 // argv is the command with model in place of every {model}, port in place
 // of every {port}, and each argument with {place} once for each of places,
-// after the flag before it.
+// after the flag before it. With no model, each argument with {model} is
+// left out with the flag before it.
 func (p Profile) argv(model string, places []string, port int) []string {
-	var argv []string
 	fill := func(arg string) string {
 		arg = strings.ReplaceAll(arg, portPlaceholder, strconv.Itoa(port))
 		return strings.ReplaceAll(arg, modelPlaceholder, model)
 	}
-	for i, arg := range p.Command {
-		if !strings.Contains(arg, placePlaceholder) {
-			if i+1 < len(p.Command) && isFlag(arg) && strings.Contains(p.Command[i+1], placePlaceholder) {
-				continue // goes before each place
+	// varies says whether an argument may appear other than once; the flag
+	// before it goes with each time it does.
+	varies := func(arg string) bool {
+		return strings.Contains(arg, placePlaceholder) || model == "" && strings.Contains(arg, modelPlaceholder)
+	}
+	values := func(arg string) []string {
+		switch {
+		case model == "" && strings.Contains(arg, modelPlaceholder):
+			return nil
+		case strings.Contains(arg, placePlaceholder):
+			each := make([]string, len(places))
+			for i, place := range places {
+				each[i] = strings.ReplaceAll(arg, placePlaceholder, place)
 			}
-			argv = append(argv, fill(arg))
-			continue
+			return each
 		}
-		for _, place := range places {
-			if i > 0 && isFlag(p.Command[i-1]) {
+		return []string{arg}
+	}
+	var argv []string
+	for i, arg := range p.Command {
+		if i+1 < len(p.Command) && isFlag(arg) && varies(p.Command[i+1]) {
+			continue // goes before each value of the next argument
+		}
+		flagged := i > 0 && isFlag(p.Command[i-1]) && varies(arg)
+		for _, value := range values(arg) {
+			if flagged {
 				argv = append(argv, p.Command[i-1])
 			}
-			argv = append(argv, fill(strings.ReplaceAll(arg, placePlaceholder, place)))
+			argv = append(argv, fill(value))
 		}
 	}
 	return argv

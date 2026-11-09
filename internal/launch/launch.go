@@ -66,14 +66,16 @@ type Status struct {
 	Models []string `json:"models"` // the choices for {model}
 	// Files are the choices with their size, for a profile whose choices
 	// are the config's model files; null for one with its own models.
-	Files   []library.File `json:"files"`
-	Running bool           `json:"running"`
-	Model   string         `json:"model,omitempty"`
-	Port    int            `json:"port,omitempty"` // where the last child listens, when its profile says
-	PID     int            `json:"pid,omitempty"`  // only while running
-	Started *time.Time     `json:"started,omitempty"`
-	Exit    string         `json:"exit,omitempty"` // how the last child ended: "exit status 1", "stopped", ...
-	Log     []string       `json:"log"`            // its last lines of stdout and stderr together, oldest first
+	Files []library.File `json:"files"`
+	// ModelOptional says it also starts with no model.
+	ModelOptional bool       `json:"model_optional"`
+	Running       bool       `json:"running"`
+	Model         string     `json:"model,omitempty"`
+	Port          int        `json:"port,omitempty"` // where the last child listens, when its profile says
+	PID           int        `json:"pid,omitempty"`  // only while running
+	Started       *time.Time `json:"started,omitempty"`
+	Exit          string     `json:"exit,omitempty"` // how the last child ended: "exit status 1", "stopped", ...
+	Log           []string   `json:"log"`            // its last lines of stdout and stderr together, oldest first
 }
 
 // New returns a launcher of profiles; places, which may be nil, says where
@@ -196,7 +198,7 @@ func (l *Launcher) Status() []Status {
 	defer l.mu.Unlock()
 	statuses := make([]Status, 0, len(l.profiles))
 	for _, p := range l.profiles {
-		s := Status{Name: p.Name, Models: choices(p, files), Log: []string{}}
+		s := Status{Name: p.Name, Models: choices(p, files), ModelOptional: p.ModelOptional, Log: []string{}}
 		if p.takesFiles() {
 			s.Files = append([]library.File{}, files...)
 		}

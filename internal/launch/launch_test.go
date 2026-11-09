@@ -164,6 +164,7 @@ func TestLoadSaysWhatWouldWork(t *testing.T) {
 		{`{"launch": [{"name": "a", "command": ["x"], "models": ["m"]}]}`, `lists models but its command has no {model}`},
 		{`{"launch": [{"name": "a", "command": ["x", "--port", "{port}"]}]}`, `has {port} but no "port"`},
 		{`{"launch": [{"name": "a", "command": ["x"], "port": 70000}]}`, `has port 70000; give a number from 1 to 65535`},
+		{`{"launch": [{"name": "a", "command": ["x"], "model_optional": true}]}`, `has "model_optional" but its command has no {model}`},
 		{`{"launch": []} {}`, "text after the first JSON object"},
 		{`{"launch": [`, "unexpected EOF"},
 	} {

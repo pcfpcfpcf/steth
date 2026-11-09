@@ -1216,14 +1216,18 @@ function drawLaunch() {
   if (!profiles.some((p) => p.name === chosenProfile)) chosenProfile = profiles[0].name;
   const p = profiles.find((x) => x.name === chosenProfile);
   fillSelect($("profile"), [[null, profiles.map((x) => [x.name, x.running ? `${x.name} · running` : x.name])]], chosenProfile);
-  // A profile with files takes the model files steth found; it may find none.
+  // A profile with files takes the model files steth found; it may find
+  // none, and may start with none.
   const noFiles = p.files != null && p.models.length === 0;
+  const stuck = noFiles && !p.model_optional;
   if ((p.models.length > 0 || noFiles) && !p.running) {
     $("profile-model-field").hidden = false;
-    const pick = p.models.includes(profileModels.get(p.name)) ? profileModels.get(p.name) : p.models[0] ?? "";
-    fillSelect($("profile-model"), [[null, noFiles ? [["", "no model files found"]] : modelLabels(p)]], pick);
+    const options = stuck ? [["", "no model files found"]]
+      : [...(p.model_optional ? [["", "no model"]] : []), ...modelLabels(p)];
+    const pick = p.models.includes(profileModels.get(p.name)) ? profileModels.get(p.name) : options[0][0];
+    fillSelect($("profile-model"), [[null, options]], pick);
   }
-  $("start").disabled = p.running || noFiles || busy.launch !== "";
+  $("start").disabled = p.running || stuck || busy.launch !== "";
   $("stop-engine").disabled = !p.running || busy.launch !== "";
   $("start").firstChild.textContent = busy.launch === "Starting" ? "Starting… " : "Start ";
   $("stop-engine").textContent = busy.launch === "Stopping" ? "Stopping…" : "Stop";

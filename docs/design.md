@@ -137,7 +137,10 @@ flag before it, so geode starts allowed to open every place's files.
 `{port}` is replaced at each start by the first port from the profile's
 `port` up, of at most 100, that nothing answers on; a profile with `port`
 but no `{port}` names where its engine listens, and must find that port
-quiet to start (as `ollama serve` on 11434). A
+quiet to start (as `ollama serve` on 11434). A profile with
+`"model_optional": true` may also start with no model: each argument with
+`{model}` is then left out, with the flag before it, as geode serves with
+no model and loads files later. A
 profile's own `models` are its choices; one that lists none takes the model
 files under the places: the file's `models`, a list of directories and
 `.gguf` files that are always there, then those added on the page, kept in
@@ -223,7 +226,7 @@ address, steth serves no action routes, and `--config` is refused.
 | `GET /api/v1/controls` | — | `[{engine, endpoint, models, files?, error?}]`: every engine with controls and the models it could load or unload; `files`, from an engine that loads by file (geode), is `[{path, model?, state?, error?}]`, each file it may open and what it is now (`loading`, `ready`, `failed`, `unloading`), and `[]`, not absent, from one that may open none (geode without `--models-dir`) |
 | `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`, done `loaded` or `unloaded`, or `loading` or `unloading` from an engine that answers once begun (geode); 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
-| `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, running, model?, port?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null; `port` is where its last child listens, where the profile says |
+| `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, model_optional, running, model?, port?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null; `model_optional`, that it also starts with no model; `port` is where its last child listens, where the profile says |
 | `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without `--config` |
 | `GET /api/v1/library` | — | `{places: [{path, fixed}], files: [{path, bytes, real}]}`: the places and the model files under them; `real` is the path with every link followed, as an engine that resolves links names it |
 | `POST /api/v1/library/add`, `/remove` | `{path}` | the library after it; 409 with the reason: not absolute, not there, neither a directory nor a `.gguf` file, a place already, or one from the config file |

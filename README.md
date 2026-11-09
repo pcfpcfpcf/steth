@@ -105,7 +105,8 @@ narrow screen it follows the models.
   found again at each look and shown with its size. An argument with
   `{place}` repeats for each place, after the flag before it. `{port}`
   is the first port from the profile's `"port"` up that nothing answers
-  on. The engine's log is under the pulse. steth refuses to start a
+  on. `"model_optional": true` lets a profile start with no model too,
+  leaving out `{model}` and the flag before it. The engine's log is under the pulse. steth refuses to start a
   profile already running or whose `--port` already answers, keeps each
   engine's last 120 log lines, stops only engines it started, and stops all
   of them when it exits. A started engine appears like any other, through
