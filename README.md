@@ -89,8 +89,25 @@ narrow screen it follows the models.
   file allowed, or with none (no `--models-dir`).
   Places added on the page are kept in `--places`, by default
   `steth/places.json` in your config directory.
+- **Engines installed.** steth looks on PATH for each engine's program
+  (`geode`; `ollama`; `llama` when it says a llama.cpp build, then
+  `llama-server`; `vllm`) and lists each one it finds with its path and,
+  where asking is cheap, its version. `--engine ENGINE=PATH` names one
+  that is not on PATH, such as `--engine geode=/opt/geode/bin/geode`;
+  repeat it for more. An engine whose program is not found is not listed
+  as installed. For each engine found that the config file does not
+  start, steth has a profile of its own, named after the engine, so the
+  page can start it with no config:
+
+  | engine | starts as |
+  |---|---|
+  | geode | `geode serve [{model}] --models-dir {place} --port {port}`, from 8080; with no model it serves none and loads files from the page |
+  | Ollama | `ollama serve`, refused while 11434 answers |
+  | llama.cpp | `llama serve -m {model} --port {port}` (or `llama-server -m ...`), from 9931 |
+  | vLLM | `vllm serve {model} --port {port}`, from 8000; vLLM reads GGUF files only experimentally |
+
 - **Start and stop engines.** `--config steth.json` names launch profiles
-  and where model files are:
+  of your own, and where model files are:
 
       {"models": ["/models", "/data/Qwen3.5-9B-Q4_K_M.gguf"],
        "launch": [

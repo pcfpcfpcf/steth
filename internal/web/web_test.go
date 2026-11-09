@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/pcfpcfpcf/steth/internal/engine/control"
+	"github.com/pcfpcfpcf/steth/internal/installed"
 	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/state"
 )
@@ -322,6 +323,23 @@ func TestLaunchWithoutConfig(t *testing.T) {
 	if w := act(h, http.MethodPost, "/api/v1/launch/start", `{"name":"x"}`, nil); w.Code != http.StatusNotFound ||
 		!strings.Contains(w.Body.String(), "--config") {
 		t.Errorf("start without profiles: status %d %s", w.Code, w.Body)
+	}
+}
+
+func TestEnginesListsThePrograms(t *testing.T) {
+	if w := act(withActions(&fakeEngine{}), http.MethodGet, "/api/v1/engines", "", nil); strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Errorf("no program found: %s", w.Body)
+	}
+	h := Handler(current, &Actions{Sources: func() []Source { return nil }, Installed: []Installed{{
+		Found:    installed.Found{Engine: "geode", Path: "/opt/geode", Named: true, Binary: installed.Binary{Name: "geode"}},
+		Profiles: []string{"geode"},
+	}}})
+	w := act(h, http.MethodGet, "/api/v1/engines", "", nil)
+	if want := `[{"engine":"geode","path":"/opt/geode","named":true,"profiles":["geode"]}]`; strings.TrimSpace(w.Body.String()) != want {
+		t.Errorf("got %s\nexpected %s", w.Body, want)
+	}
+	if w := act(h, http.MethodGet, "/api/v1/engines", "", func(r *http.Request) { r.Host = "evil.example:7474" }); w.Code != http.StatusForbidden {
+		t.Errorf("a rebound name: status %d; expected 403", w.Code)
 	}
 }
 

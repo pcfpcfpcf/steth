@@ -12,6 +12,7 @@ import (
 
 	"github.com/pcfpcfpcf/steth/internal/chat"
 	"github.com/pcfpcfpcf/steth/internal/engine/control"
+	"github.com/pcfpcfpcf/steth/internal/installed"
 	"github.com/pcfpcfpcf/steth/internal/launch"
 	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/state"
@@ -31,9 +32,11 @@ type Source interface {
 type Actions struct {
 	// Sources are the engines steth reads now; actions reach no other.
 	Sources func() []Source
-	// Launcher starts and stops engines from launch profiles; nil without a
-	// config file.
+	// Launcher starts and stops engines from launch profiles; nil without
+	// any.
 	Launcher *launch.Launcher
+	// Installed are the engines whose programs are on this machine.
+	Installed []Installed
 	// Places are where model files are on this machine.
 	Places *library.Places
 	// Client sends chats and controls; it needs no timeout, as a chat ends
@@ -51,6 +54,7 @@ func (a *Actions) register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/load", guard(a.load))
 	mux.HandleFunc("POST /api/v1/unload", guard(a.unload))
 	mux.HandleFunc("POST /api/v1/chat", guard(a.chat))
+	mux.HandleFunc("GET /api/v1/engines", guard(a.engines))
 	mux.HandleFunc("GET /api/v1/launch", guard(a.launchStatus))
 	mux.HandleFunc("POST /api/v1/launch/start", guard(a.launchStart))
 	mux.HandleFunc("POST /api/v1/launch/stop", guard(a.launchStop))
@@ -58,6 +62,13 @@ func (a *Actions) register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/library/add", guard(a.placeAdd))
 	mux.HandleFunc("POST /api/v1/library/remove", guard(a.placeRemove))
 	mux.HandleFunc("GET /api/v1/library/browse", guard(a.browse))
+}
+
+// Installed is an engine's program on this machine and the launch
+// profiles that start it.
+type Installed struct {
+	installed.Found
+	Profiles []string `json:"profiles"`
 }
 
 // controllable is one engine with controls, and the models it could load
@@ -225,6 +236,14 @@ func (s *eventStream) event(name string, v any) {
 	fmt.Fprintf(s, "event: %s\ndata: %s\n\n", name, data)
 }
 
+func (a *Actions) engines(w http.ResponseWriter, r *http.Request) {
+	if a.Installed == nil {
+		reply(w, []Installed{})
+		return
+	}
+	reply(w, a.Installed)
+}
+
 func (a *Actions) launchStatus(w http.ResponseWriter, r *http.Request) {
 	if a.Launcher == nil {
 		reply(w, []launch.Status{})
@@ -249,7 +268,7 @@ func (a *Actions) launchStop(w http.ResponseWriter, r *http.Request) {
 
 func (a *Actions) launch(w http.ResponseWriter, r *http.Request, done string, act func(launchRequest) error) {
 	if a.Launcher == nil {
-		fail(w, http.StatusNotFound, errors.New("no launch profiles: start steth with --config FILE"))
+		fail(w, http.StatusNotFound, errors.New("no launch profiles: steth found no engine's program; name one with --engine ENGINE=PATH, or give --config FILE"))
 		return
 	}
 	var req launchRequest

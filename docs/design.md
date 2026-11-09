@@ -64,7 +64,7 @@ Each lives in its own package and is replaceable alone.
 | `internal/library` | the places of model files (the config's, and those added from the page, kept in a file); the `.gguf` files under them; one directory listed for picking a place | `Open(fixed, file)`, `Add`, `Remove`, `Scan(places)`, `Browse(dir)` |
 | `internal/launch` | reads the config file; starts and stops engine processes from its profiles, a `{model}` among the files under the places; owns only its children; keeps each one's recent log | `Load(path)`, `New(profiles, places)`, `Start(name, model)`, `Stop(name)`, `Status()` |
 | `internal/web` | serves the embedded page and the state as JSON; takes actions from its own page only | `Handler(state func, *Actions) http.Handler`, `Loopback(listen)` |
-| `cmd/steth` | flags, the config file, the engine list, and wiring | the binary |
+| `cmd/steth` | flags, the config file, the engine list, each engine's program and steth's own profiles for them, and wiring | the binary |
 
 Layers point down: `cmd` knows everything; `discover` knows `box` and the
 collector's `Source`; `web` knows `state`, `chat` and `launch`, and reaches
@@ -103,9 +103,35 @@ model and a vLLM server not in dev mode have the methods but answer
 `control.ErrNone`. An engine's refusal reaches the page in its own words
 (`model is already running`).
 
+### Installed engines, and the profiles steth has for them
+
+An engine is installed when its program is found; discovery, which sees
+only engines that listen, says whether it runs. Each adapter names its
+programs, preferred first (`installed.Binary`): its file name, how to ask
+its version and whether the answer makes it the engine's own, and how to
+start it. steth takes, for each engine, the program named with `--engine
+ENGINE=PATH`, else the one a config profile runs (found by its file name),
+else the first on PATH that is the engine's own:
+
+| engine | programs | version | steth's own profile |
+|---|---|---|---|
+| geode | `geode` | not asked: geode has no version flag and opens one as a model | `geode serve {model} --models-dir {place} --port {port}`, model optional, from 8080 |
+| Ollama | `ollama` | `ollama --version` | `ollama serve`, port 11434, which must be quiet |
+| llama.cpp | `llama`, only when `--version` prints a build such as `b10217-ddd4ec142`; `llama-server` | `--version` | `llama serve -m {model} --port {port}` (`llama-server -m ...`), from 9931 |
+| vLLM | `vllm` | not asked: it imports torch | `vllm serve {model} --port {port}`, from 8000 |
+
+A version is asked at start-up only, with 2 s to answer and its first 4 KB
+read; a program that does not answer is listed without one, or, for
+`llama`, not at all. A named program is trusted whatever its name. A
+relative directory on PATH is skipped. steth's own profile for an engine
+exists only when no config profile runs that engine's program, and is
+named after the engine unless a config profile has that name. These are
+profiles like any other: the same refusals, children and logs.
+
 ### Launch, from profiles in a file
 
-Monitoring stays zero-config. Launching needs one file, `--config
+Monitoring stays zero-config, and so does starting an installed engine
+with steth's own profile. Profiles of one's own need one file, `--config
 steth.json`, because executables and model paths are the machine's, and the
 browser never supplies a command:
 
@@ -217,7 +243,7 @@ refused; a POST also needs `Origin` to be the page's own and a JSON body
 under 1 MB with no unknown field. The action GETs carry no CORS header, so
 no other site can read them. The page is served with a CSP that runs only
 its own script, by hash, and talks only to steth. Bound to a non-loopback
-address, steth serves no action routes, and `--config` is refused.
+address, steth serves no action routes, and `--config` and `--engine` are refused.
 `GET /api/v1/state` is unchanged.
 
 ### Routes
@@ -227,8 +253,9 @@ address, steth serves no action routes, and `--config` is refused.
 | `GET /api/v1/controls` | — | `[{engine, endpoint, models, files?, error?}]`: every engine with controls and the models it could load or unload; `files`, from an engine that loads by file (geode), is `[{path, model?, state?, error?}]`, each file it may open and what it is now (`loading`, `ready`, `failed`, `unloading`), and `[]`, not absent, from one that may open none (geode without `--models-dir`) |
 | `POST /api/v1/load`, `/api/v1/unload` | `{engine, endpoint, model}` | `{model, done}`, done `loaded` or `unloaded`, or `loading` or `unloading` from an engine that answers once begun (geode); 404 for an engine steth does not read or one without controls, 502 with the engine's message when it refuses |
 | `POST /api/v1/chat` | `{engine, endpoint, model, messages, max_tokens?, temperature?}` | the engine's event stream as it arrives, then `event: steth` with the reply's numbers, or `event: error` if the stream broke; 404 for a model steth does not read |
-| `GET /api/v1/launch` | — | every profile in config order: `{name, models, files, model_optional, running, model?, port?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null; `model_optional`, that it also starts with no model; `port` is where its last child listens, where the profile says |
-| `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without `--config` |
+| `GET /api/v1/engines` | — | `[{engine, path, version?, named, profiles}]`: each engine whose program steth found, in the engines' order; `named` when it was named (`--engine`, a config profile) rather than found on PATH; `profiles`, the launch profiles that start it |
+| `GET /api/v1/launch` | — | every profile, the config's in order, then steth's own: `{name, models, files, model_optional, running, model?, port?, pid?, started?, exit?, log}`; `files` is `[{path, bytes}]` for a profile that takes the model files, else null; `model_optional`, that it also starts with no model; `port` is where its last child listens, where the profile says |
+| `POST /api/v1/launch/start`, `/stop` | `{name, model?}` | `{name, done}`; 409 with the reason for a refusal; 404 without any profile |
 | `GET /api/v1/library` | — | `{places: [{path, fixed}], files: [{path, bytes, real}]}`: the places and the model files under them; `real` is the path with every link followed, as an engine that resolves links names it |
 | `POST /api/v1/library/add`, `/remove` | `{path}` | the library after it; 409 with the reason: not absolute, not there, neither a directory nor a `.gguf` file, a place already, or one from the config file |
 | `GET /api/v1/library/browse?dir=` | — | `{dir, parent, dirs, files, cut}`: one directory's subdirectories and `.gguf` files, hidden entries left out; no `dir` is the home directory |

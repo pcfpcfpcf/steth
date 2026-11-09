@@ -4,6 +4,25 @@ Decisions as they are made, newest first.
 
 ## 2026-11-09
 
+- **steth has a profile of its own for each engine found** that no config
+  profile starts, so the page starts an engine with no config: before,
+  with no `--config`, it could start nothing. Chosen over generating a
+  config file: these change with what is installed, and the config file
+  stays the person's. A config profile for an engine (its program's file
+  name, or the very path) replaces steth's, and keeps its name if it is
+  the engine's. geode's starts with no model or with a file, on a quiet
+  port from 8080; Ollama's is `ollama serve`, refused while 11434 answers
+  (the system service here); llama.cpp's serves the one file it is given,
+  from 9931 (a router would need a models directory steth would choose);
+  vLLM's takes a file from the places, which vLLM reads only
+  experimentally, unchecked as no vLLM runs here. Programs are found at
+  start-up only: one installed later needs a restart, rather than asking
+  versions again every few seconds. A config profile's program names its
+  engine's, so a geode reached only through the config is installed too.
+  `--engine`, like `--config`, is refused off loopback. Checked live:
+  geode named with `--engine`, Ollama 0.21.2 and llama.cpp b10217 found on
+  PATH, each with a profile.
+
 - **An engine is installed when its program is found,** asked for by the
   owner, as discovery sees only engines that listen. Each adapter names
   its programs (`geode`; `ollama`; `llama`, then `llama-server`; `vllm`);

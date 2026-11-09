@@ -24,6 +24,7 @@ import (
 	"github.com/pcfpcfpcf/steth/internal/engine/llamacpp"
 	"github.com/pcfpcfpcf/steth/internal/engine/ollama"
 	"github.com/pcfpcfpcf/steth/internal/engine/vllm"
+	"github.com/pcfpcfpcf/steth/internal/installed"
 	"github.com/pcfpcfpcf/steth/internal/launch"
 	"github.com/pcfpcfpcf/steth/internal/library"
 	"github.com/pcfpcfpcf/steth/internal/web"
@@ -87,6 +88,8 @@ func main() {
 	listen := flag.String("listen", defaultListen, "address to serve the page on")
 	flag.Var(&sources, "target", "an engine discovery cannot find, such as one on another machine, as ENGINE=URL; repeat for more")
 	find := flag.Bool("discover", true, "find the engines running on this machine")
+	var named namedPrograms
+	flag.Var(&named, "engine", "an engine's program not on PATH, as ENGINE=PATH, such as geode=/opt/geode/bin/geode; repeat for more")
 	config := flag.String("config", "", "a JSON file of launch profiles, the engines the page may start, and the places of model files")
 	placesFile := flag.String("places", defaultPlacesFile(), `the file that keeps the places of model files added from the page; "" keeps them only while steth runs`)
 	showVersion := flag.Bool("version", false, "print the version and exit")
@@ -114,7 +117,7 @@ func main() {
 	c := collector.New(registry.Sources, readTimeout)
 	go c.Run(ctx, pollInterval)
 
-	actions, err := actionsFor(*listen, *config, *placesFile, registry)
+	actions, err := actionsFor(ctx, *listen, *config, *placesFile, named, registry)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "steth: %v\n", err)
 		os.Exit(2)
@@ -140,11 +143,12 @@ func main() {
 }
 
 // actionsFor is what the page may do: on a loopback address, chat, load and
-// unload, and with a config file start and stop engines; elsewhere nothing.
-func actionsFor(listen, config, placesFile string, registry *discover.Registry) (*web.Actions, error) {
+// unload, and start and stop the engines found here or in a config file;
+// elsewhere nothing.
+func actionsFor(ctx context.Context, listen, config, placesFile string, named []installed.Named, registry *discover.Registry) (*web.Actions, error) {
 	if !web.Loopback(listen) {
-		if config != "" {
-			return nil, fmt.Errorf("--config needs a loopback --listen address: steth takes actions only from this machine")
+		if config != "" || len(named) > 0 {
+			return nil, fmt.Errorf("--config and --engine need a loopback --listen address: steth takes actions only from this machine")
 		}
 		log.Printf("steth: %s is not a loopback address, so the page only monitors", listen)
 		return nil, nil
@@ -171,9 +175,21 @@ func actionsFor(listen, config, placesFile string, registry *discover.Registry) 
 		return nil, err
 	}
 	actions.Places = places
+	found, err := findPrograms(ctx, named, c.Launch)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("steth: found %s", describe(found))
+	var profiles []launch.Profile
+	actions.Installed, profiles = builtIn(found, c.Launch)
+	if len(profiles) > 0 {
+		actions.Launcher = launch.New(profiles, places.Paths)
+	}
 	if config != "" {
-		actions.Launcher = launch.New(c.Launch, places.Paths)
 		log.Printf("steth: %d launch profile(s) from %s", len(c.Launch), config)
+	}
+	if own := len(profiles) - len(c.Launch); own > 0 {
+		log.Printf("steth: %d launch profile(s) of steth's own, for engines the config file does not start", own)
 	}
 	log.Printf("steth: %d place(s) of model files", len(places.All()))
 	return actions, nil
