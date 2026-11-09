@@ -29,10 +29,11 @@ pin.
    when it was last read, for a bounded time or until another engine takes
    its port; the page shows it as stopped. `GET /api/v1/state` carries the
    same, so a probe can alert on it.
-3. **geode shows no speed.** `/v1/pool` carries no decode or prefill rate and
-   no `"schema"` field (LOG.md, 2026-10-26, "Owed after the first build").
-   That is work in geode's repository (its docs/TODO.md, "Selling a box"
-   item 6); steth reads the fields once they are there.
+3. **geode's speeds and file loads wait on its `steth` branch.** steth
+   derives decode and prefill speed from the totals `/v1/pool` reports, and
+   loads and unloads files through `/models/*`, both only on geode's
+   `steth` branch, not yet in its master. `/v1/pool` still has no
+   `"schema"` field.
 4. **No release.** CHANGELOG.md has only "Unreleased", and the README marks
    geode's row internal and not out. geode's submodule follows a commit, not
    a version.
@@ -53,7 +54,14 @@ pin.
    - `nvidia-smi` on Windows.
    - llama.cpp router mode's `sleeping` and `loading` states, written from
      source.
-7. **Known wrong or unread:**
+7. **geode drops out while its queue is full.** With every lane and queue
+   place taken, geode's one intake thread waits for room and answers
+   nothing, `/v1/pool` included, so discovery loses it until the queue
+   drains. Work in geode: keep answering the listing routes, or refuse
+   with 503, while the queue is full.
+8. **A place added on the page reaches a running geode only at its next
+   start;** geode takes its allowed files from `--models-dir` flags only.
+9. **Known wrong or unread:**
    - vLLM KV usage under data parallelism is summed over engines against
      engine 0's size: wrong past one engine.
    - llama.cpp flags given as `LLAMA_ARG_*` environment variables are not
