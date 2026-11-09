@@ -52,11 +52,12 @@ Each lives in its own package and is replaceable alone.
 | package | job | surface |
 |---|---|---|
 | `internal/state` | the schema: the shape every adapter fills and the page reads | types only |
-| `internal/engine/<name>` | reads one engine's endpoints into a `state.Reading`; says which command lines run it, its default ports, and how to probe it; where the engine has the controls, lists the models it could load and loads or unloads one | `New(endpoint)`, `Read(ctx)`, `Runs`, `Ports`, `Probe`; optional `control.Controls` |
+| `internal/engine/<name>` | reads one engine's endpoints into a `state.Reading`; says which command lines run it, its default ports, how to probe it, and the programs that serve it with how to start one; where the engine has the controls, lists the models it could load and loads or unloads one | `New(endpoint)`, `Read(ctx)`, `Runs`, `Ports`, `Probe`, `Binaries`; optional `control.Controls` |
 | `internal/engine/control` | the optional interface an adapter with load and unload implements | `Controls`: `Available(ctx)`, `Load(ctx, id)`, `Unload(ctx, id)`; `ErrNone` |
 | `internal/engine/fetch` | GETs an engine's JSON or text; POSTs JSON; a refused request's error carries the status and the engine's own message | `JSON`, `Body`, `Post`, `StatusError` |
 | `internal/engine/enginetest` | serves recorded responses, compares readings with expected JSON | `Serve`, `Match` |
 | `internal/box` | what the OS says: pool sizes and use, a process's memory, command line and parent, listening sockets; also a source of pools | `Source`, `ProcessMemory`, `Listeners`, `Cmdline`, `ParentPID` |
+| `internal/installed` | finds each engine's program: the one named for it, else the first of its binaries on PATH that is its own, asked its version where that is cheap | `Find(ctx, engines, path, named)`, `Engine.Runs(program)` |
 | `internal/discover` | finds engines from sockets, processes and probes; keeps the source list | `Find`, `Registry` |
 | `internal/collector` | polls whichever sources there are on a monotonic schedule, merges readings, keeps the latest state and two minutes of speeds | `New(sources func)`, `Run(ctx)`, `State()` |
 | `internal/chat` | sends one prompt to a model steth knows, streams the reply back, and reports that reply's numbers | `Send(ctx, target, request, w) (Reply, error)` |
@@ -68,8 +69,8 @@ Each lives in its own package and is replaceable alone.
 Layers point down: `cmd` knows everything; `discover` knows `box` and the
 collector's `Source`; `web` knows `state`, `chat` and `launch`, and reaches
 adapters only through the interfaces above; `collector` knows `state`;
-adapters know `state`, `fetch`, `box` and their engine; `launch` knows only
-the OS; `state` knows nothing.
+adapters know `state`, `fetch`, `box`, `installed` and their engine;
+`installed` and `launch` know only the OS; `state` knows nothing.
 
 The collector stamps each model with its source's engine and endpoint, so an
 adapter never repeats them. Pools are merged by name; the first source that

@@ -4,6 +4,25 @@ Decisions as they are made, newest first.
 
 ## 2026-11-09
 
+- **An engine is installed when its program is found,** asked for by the
+  owner, as discovery sees only engines that listen. Each adapter names
+  its programs (`geode`; `ollama`; `llama`, then `llama-server`; `vllm`);
+  steth takes the one named for the engine, else the first on PATH that is
+  the engine's own. A program is asked its version only where that is
+  cheap and safe: `ollama --version` and llama.cpp's `--version` answer at
+  once. geode has no version flag and opens `--version` as a model file
+  (it starts CUDA first), and `vllm --version` imports torch, so neither
+  is run. `llama` is a common name, so it counts only when it prints a
+  llama.cpp build (`b10217-ddd4ec142`); `llama-server` is llama.cpp's own
+  name. Each answer gets 2 s and its first 4 KB. A relative directory on
+  PATH is skipped, as a program from the current directory would be. A
+  named program is trusted, whatever its file name.
+- **`~/.local/bin/llama` on this box is llama.cpp,** build b10217
+  (ddd4ec142): `llama --help` lists `serve`, `cli`, `update`, `download`,
+  and `llama serve --version` prints llama.cpp's `version: 10217
+  (ddd4ec142)`, `built with Clang 22.1.8`. It is the build the llama.cpp
+  adapter was checked against, so steth lists it as installed.
+
 - **A profile's model may be optional** (`model_optional`). geode serves
   with no model and stays up, then loads files from the page (from the
   session working on geode), so one geode profile both starts empty and
