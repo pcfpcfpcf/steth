@@ -1383,10 +1383,13 @@ function fileActions(f) {
     }
   }
   if (out.length === 0) {
+    // An engine that loads by file opens only what it was started allowed
+    // to; it lists none of its files when it was allowed none.
     const running = profiles.filter((x) => x.files != null && x.running).map((x) => x.name);
-    out.push(`<span class="file-state quiet">${running.length
-      ? escape(`${running.join(", ")} runs without it; stop and start it to allow this place`)
-      : "NO ENGINE CAN OPEN IT"}</span>`);
+    const why = running.length ? [`${running.join(", ")} runs without it; stop and start it to allow this place`]
+      : openers.map((c) => c.files.length ? `${engineAt(c)} was started without this file allowed`
+        : `${engineAt(c)} was started with no model files allowed`);
+    out.push(`<span class="file-state quiet">${why.length ? escape(why.join("; ")) : "NO ENGINE CAN OPEN IT"}</span>`);
   }
   return out.join("");
 }

@@ -4,6 +4,22 @@ Decisions as they are made, newest first.
 
 ## 2026-11-09
 
+- **A file row says why a running geode cannot open it,** rather than
+  *No engine can open it*: geode was started without that file allowed,
+  or with no model files allowed. Checked live against geode (branch
+  `steth`) on port 8094: started with no `--models-dir`, every row said
+  so; started allowing the 0.8B file, its row offered *Load into geode
+  :8094*, loaded (loading, then ready) and unloaded through steth, and
+  the rest said geode was started without them. geode was discovered
+  within one discovery round (10 s) whether started with a model or
+  none, and its `/v1/pool` answered within 1 ms with 12 requests in
+  flight (4 lanes, 8 queued).
+- **A geode with a full queue looks gone.** With 16 requests in flight
+  geode's one intake thread waits for room in its queue of 8, so nothing
+  more is accepted: 29 of 30 `/v1/pool` reads timed out at 500 ms, and a
+  discovery round then drops geode until the queue drains. Fixed only on
+  geode's side, by answering the listings while the queue is full.
+
 - **A geode that may open no file still lists its files,** as `[]`. The
   owner saw *No engine can open it* on every file row with geode running:
   `/api/v1/controls` dropped an empty `files` with `omitempty`, so a geode

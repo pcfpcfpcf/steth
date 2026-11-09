@@ -84,7 +84,9 @@ narrow screen it follows the models.
   for a directory or a `.gguf` file; every model file under the places is
   listed with its size. A geode started with `--models-dir` for the place
   loads a file with *Load into geode* and unloads it; a file no running
-  engine may open has *Start* for each profile that takes model files.
+  engine may open has *Start* for each profile that takes model files,
+  and else its row says why: a running geode was started without that
+  file allowed, or with none (no `--models-dir`).
   Places added on the page are kept in `--places`, by default
   `steth/places.json` in your config directory.
 - **Start and stop engines.** `--config steth.json` names launch profiles
