@@ -23,7 +23,9 @@ pin.
    answers is dropped at the next look, within 10 s
    (`discover.Registry.Refresh`), and its models and history go with it. A
    crashed `geode serve` looks like a box with nothing loaded, not like a
-   failure. Only `--target` sources keep showing their error.
+   failure. Only `--target` sources keep showing their error. The page's
+   *Engines* card for an installed engine then says `stopped`, but not that
+   it crashed, where it ran, or what it held.
 
    Probable Solution: keep a discovered source that has gone as `down`, with
    when it was last read, for a bounded time or until another engine takes
@@ -54,6 +56,9 @@ pin.
    - `nvidia-smi` on Windows.
    - llama.cpp router mode's `sleeping` and `loading` states, written from
      source.
+   - steth's own profiles for llama.cpp, `llama-server` and vLLM, never
+     started live; geode's was run only as the same command from a config
+     file, on a port of its own.
 7. **geode drops out while its queue is full.** With every lane and queue
    place taken, geode's one intake thread waits for room and answers
    nothing, `/v1/pool` included, so discovery loses it until the queue
@@ -68,6 +73,8 @@ pin.
      seen, so its config and KV layout can be read wrong.
    - Ollama reports no speed or busy state; a timing proxy was rejected
      (LOG.md).
+   - Engines' programs are looked for once, at start-up: one installed
+     later is listed only after steth restarts.
 
 ## Out of scope today, asked for by a box left alone
 

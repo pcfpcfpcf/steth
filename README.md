@@ -60,10 +60,10 @@ Actions answer only on a loopback `--listen` address (the default), and only
 to steth's own page: a request from another site or through a name that is
 not this machine's gets 403. Bound elsewhere, steth only watches.
 
-Beside the pools and models, a column holds a toolbar that picks a model
-and, with launch profiles, an engine; under it are the conversation and
-that model's pulse. The column stays in view as the box scrolls; on a
-narrow screen it follows the models.
+Beside the pools, engines and model files, a column holds a toolbar that
+picks a model and, with launch profiles, an engine; under it are the
+conversation and that model's pulse. The column stays in view as the box
+scrolls; on a narrow screen it follows the model files.
 
 - **Chat.** Pick a model in the toolbar, or *Talk to it* from its details,
   and send a prompt. It goes to that model
@@ -97,7 +97,9 @@ narrow screen it follows the models.
   repeat it for more. An engine whose program is not found is not listed
   as installed. For each engine found that the config file does not
   start, steth has a profile of its own, named after the engine, so the
-  page can start it with no config:
+  page can start it with no config. *Engines* on the page has a card for
+  each: its path, version, where it runs and who started it, its models
+  with their state and memory, and *Start*, *Stop* and *Log*:
 
   | engine | starts as |
   |---|---|

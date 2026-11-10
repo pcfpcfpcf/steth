@@ -2,6 +2,27 @@
 
 Decisions as they are made, newest first.
 
+## 2026-11-10
+
+- **Engines (02) replaces the model cards,** asked for by the owner: the
+  cards showed only Ollama's models, and the pools already show every
+  model's memory. A card per engine, installed, read or with a profile,
+  with where it runs, who started it, its models and *Start*, *Stop* and
+  *Log*. A running endpoint belongs to a profile when the profile's last
+  port is that endpoint's on this machine. The card offers *Start* only
+  for an engine that runs nowhere and starts without a model; the
+  toolbar still starts a second one, or one with a model. A file row now
+  also offers *Start* for a stopped profile whose own engine runs nowhere,
+  though another engine lists the file: the llamacpp card said to start
+  it from a file while the row hid it, as a geode listed the file.
+  Checked live on port 7481 with geode started from its profile on 8093
+  with no model, at 1440, 1024 and 400 px wide, light and dark: three
+  engines installed, geode with its model, pid and *Stop*, Ollama started
+  outside steth, llamacpp stopped; the row offered *Unload* in geode and
+  *Start llamacpp with it*; nothing wider than the screen. geode loaded
+  the file by itself at that start (its log: `loads again`), its own
+  doing, not steth's.
+
 ## 2026-11-09
 
 - **steth has a profile of its own for each engine found** that no config

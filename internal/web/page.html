@@ -163,8 +163,34 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 .swatch.other-key { background: repeating-linear-gradient(135deg, var(--well) 0 3px, color-mix(in srgb, var(--muted) 30%, var(--well)) 3px 6px); }
 .swatch.free-key { background: none; border: 1px dashed var(--muted); }
 
-/* ---- the models, one card each ---- */
-.models { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+/* ---- the engines, one card each: its program, where it runs, what it holds ---- */
+.engines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+.engine-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 7px; }
+.engine-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.engine-head b { font: normal 19px var(--serif); letter-spacing: -.02em; }
+.engine-head small { font: 10px var(--mono); color: var(--muted); margin-left: 8px; }
+.engine-path { font: 10px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -6px; }
+.endpoint { border-top: 1px solid var(--line); padding-top: 8px; }
+.endpoint-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 11px var(--mono); min-height: 28px; }
+.endpoint-head span { min-width: 0; overflow-wrap: anywhere; }
+.endpoint-head small { color: var(--muted); margin-left: 6px; }
+.endpoint-head small.error { color: var(--accent); }
+.endpoint-head button { padding: 4px 10px; font-size: 11px; }
+.engine-models { list-style: none; margin: 4px 0 0; padding: 0; }
+.engine-model { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px; margin: 0 -6px; width: calc(100% + 12px); border-radius: 4px; background: none; text-align: left; }
+.engine-model:hover, .engine-model.selected { background: var(--well); }
+.engine-model .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.engine-model .mem { font: 11px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.engine-model .state { padding: 3px 6px; }
+.engine-note { font: 10px var(--mono); letter-spacing: .06em; color: var(--muted); }
+.engine-note.error { color: var(--accent); }
+.engine-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.engine-acts:empty { display: none; }
+.engine-acts button { padding: 6px 12px; font-size: 12px; }
+.engine-acts .text-button { padding: 6px 0; }
+.state.running i { background: var(--good); }
+.state.starting i { background: var(--warning); }
+.state.stopped i { background: var(--muted); }
 
 /* ---- model files: the places, a directory browser, the files found ---- */
 .places { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -197,17 +223,6 @@ h2 { font-size: 13px; font-weight: normal; margin: 0; }
 .file-state.failed { color: var(--accent); white-space: normal; }
 .file-state.quiet { color: var(--muted); }
 .browser .caption.error { color: var(--accent); }
-.model {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 14px;
-  padding: 14px 16px; border-radius: 7px; border: 1px solid var(--line); background: var(--sheet); text-align: left;
-  transition: border-color .3s, box-shadow .3s;
-}
-.model:hover { border-color: color-mix(in srgb, var(--c) 50%, var(--line)); }
-.model.selected { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
-.model .swatch { width: 12px; height: 12px; grid-row: span 2; }
-.model-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.engine { font: normal 10px var(--mono); letter-spacing: .06em; color: var(--muted); margin-left: 8px; }
-.model-kv { grid-column: 2 / 4; display: flex; align-items: center; gap: 12px; font: 11px var(--mono); color: var(--ink-2); }
 .meter { flex: 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--c) 16%, var(--sheet)); overflow: hidden; min-width: 60px; }
 .meter i { display: block; height: 100%; border-radius: 3px; background: var(--c); width: 0; transition: width .6s cubic-bezier(.22, .8, .22, 1); }
 .state { display: inline-flex; align-items: center; gap: 7px; font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 5px 8px; border-radius: 4px; background: var(--well); color: var(--ink-2); white-space: nowrap; }
@@ -408,10 +423,10 @@ td .swatch { vertical-align: -1px; margin-right: 8px; }
       </section>
 
       <section class="sheet">
-        <div class="section-heading"><div><span class="section-number">02</span><h2>Models</h2></div></div>
+        <div class="section-heading"><div><span class="section-number">02</span><h2>Engines</h2></div><span class="aside" id="engines-aside"></span></div>
         <div class="sheet-body">
-          <div class="models" id="models"></div>
-          <p class="nothing" id="no-models" hidden>No model is loaded.</p>
+          <div class="engines" id="engines"></div>
+          <p class="nothing" id="no-engines" hidden></p>
         </div>
       </section>
 
@@ -771,23 +786,6 @@ function drawPools(status) {
   }
 }
 
-/* ---- the model rows ---- */
-const rows = new Map();
-function rowFor(m) {
-  const key = keyOf(m);
-  if (rows.has(key)) return rows.get(key);
-  const el = document.createElement("button");
-  el.className = "model";
-  el.style.setProperty("--c", series(colorOf(m)));
-  el.innerHTML = `
-    <i class="swatch"></i><span class="model-name"><span class="id"></span><span class="engine"></span></span><span class="state"><i></i><span></span></span>
-    <span class="model-kv"><span class="tokens"></span><span class="meter"><i></i></span><span class="rate"></span></span>`;
-  el.addEventListener("click", () => select({ model: key }));
-  $("models").appendChild(el);
-  rows.set(key, el);
-  return el;
-}
-
 const stateBadge = (m) =>
   `<span class="state ${escape(m.state)}"><i></i><span>${STATES[m.state] ?? escape(m.state)}${m.queued > 0 ? ` · ${m.queued} waiting` : ""}</span></span>`;
 const fill = (m) => (m.context > 0 ? Math.min(1, (m.kv_tokens ?? 0) / m.context) : 0);
@@ -795,21 +793,124 @@ const fill = (m) => (m.context > 0 ? Math.min(1, (m.kv_tokens ?? 0) / m.context)
 const tokens = (m, format, sep = " / ") =>
   `${m.kv_tokens == null ? "–" : format(m.kv_tokens)}${sep}${m.context == null ? "–" : format(m.context)}`;
 
-function drawModels(status) {
-  $("no-models").hidden = status.models.length > 0;
-  for (const m of status.models) {
-    const el = rowFor(m);
-    el.classList.toggle("selected", selected.model === keyOf(m));
-    el.querySelector(".model-name .id").textContent = nameOf(m);
-    el.querySelector(".model-name .engine").textContent = m.engine;
-    el.querySelector(".model-name").title = `${m.id} on ${m.engine} at ${m.endpoint}`;
-    el.querySelector(".state").outerHTML = stateBadge(m);
-    el.querySelector(".tokens").textContent = `KV ${tokens(m, count)}`;
-    el.querySelector(".meter").style.visibility = m.kv_tokens == null ? "hidden" : "";
-    el.querySelector(".meter i").style.width = `${fill(m) * 100}%`;
-    el.querySelector(".rate").textContent = m.decode_tps == null ? "" : tps(m.decode_tps);
-  }
+/* ---- the engines: each one installed or running, and what it holds ---- */
+/* The engines whose programs steth found, from /api/v1/engines. */
+let installs = [];
+const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]"];
+/* Everything a model holds, in every pool; null where its engine does not say. */
+const heldBy = (m) => (m.pools == null ? null : sum(Object.keys(m.pools), (pool) => whole(holding(m, pool))));
+
+/* Every engine installed or running: those found first, in their order,
+   then any running whose program steth did not find. */
+function engineList(status) {
+  const running = status.sources.filter((s) => s.engine !== BOX);
+  const names = installs.map((i) => i.engine);
+  for (const s of running) if (!names.includes(s.engine)) names.push(s.engine);
+  return names.map((name) => {
+    const install = installs.find((i) => i.engine === name);
+    return {
+      name, install, sources: running.filter((s) => s.engine === name),
+      profiles: profiles.filter((p) => install?.profiles.includes(p.name)),
+    };
+  });
 }
+
+/* The profile steth started that listens at an endpoint on this machine. */
+function ownerOf(e, endpoint) {
+  try {
+    const url = new URL(endpoint);
+    if (!LOOPBACK_HOSTS.includes(url.hostname)) return null;
+    return e.profiles.find((p) => p.running && p.port && String(p.port) === url.port) ?? null;
+  } catch (err) { return null; }
+}
+
+const engineButton = (act, label, name, primary = false) =>
+  `<button class="${primary ? "primary" : "secondary"}" data-act="${act}" data-name="${escape(name)}" ${busy.launch ? "disabled" : ""}>${escape(label)}</button>`;
+
+function modelLine(m) {
+  return `<li><button class="engine-model${selected.model === keyOf(m) ? " selected" : ""}" data-key="${escape(keyOf(m))}" title="${escape(`${m.id} on ${m.engine} at ${m.endpoint}`)}">
+    <i class="swatch" style="--c:${series(colorOf(m))}"></i><span class="name">${escape(nameOf(m))}</span>${stateBadge(m)}<span class="mem">${size(heldBy(m))}</span></button></li>`;
+}
+
+/* One endpoint the engine answers at, who started it, and its models. */
+function endpointBlock(e, s, status) {
+  const owner = ownerOf(e, s.endpoint);
+  const models = status.models.filter((m) => m.endpoint === s.endpoint);
+  const who = !s.ok ? `not answering: ${s.error}` : owner ? `steth's ${owner.name}, pid ${owner.pid}` : actionsOn ? "started outside steth" : "";
+  return `<div class="endpoint"><div class="endpoint-head"><span title="${escape(s.endpoint)}">${escape(portOf(s.endpoint))}<small class="${s.ok ? "" : "error"}">${escape(who)}</small></span>
+    ${owner ? engineButton("stop", busy.launch === `Stopping ${owner.name}` ? "Stopping…" : "Stop", owner.name) : ""}</div>
+    <ul class="engine-models">${models.length ? models.map(modelLine).join("") : `<li class="engine-note">NO MODEL LOADED</li>`}</ul></div>`;
+}
+
+/* A profile steth started that no endpoint answers for yet. */
+function startingBlock(p) {
+  return `<div class="endpoint"><div class="endpoint-head"><span>${p.port ? `:${p.port}` : ""}<small>starting: steth's ${escape(p.name)}, pid ${p.pid}</small></span>
+    ${engineButton("stop", busy.launch === `Stopping ${p.name}` ? "Stopping…" : "Stop", p.name)}</div></div>`;
+}
+
+/* What can start a stopped engine: each profile that needs no model to
+   choose, or where to choose one. */
+function startActions(e) {
+  const out = [];
+  for (const p of e.profiles) {
+    const label = e.profiles.length > 1 ? `Start ${p.name}` : "Start";
+    const needsModel = (p.files != null || p.models.length > 0) && !p.model_optional;
+    if (!needsModel) out.push(engineButton("start", busy.launch === `Starting ${p.name}` ? "Starting…" : label, p.name, true));
+    else out.push(`<span class="engine-note">${p.files != null ? `START ${escape(p.name.toUpperCase())} FROM A FILE IN 03` : "PICK ITS MODEL IN THE TOOLBAR"}</span>`);
+  }
+  return out;
+}
+
+function engineCard(e, status) {
+  const starting = e.profiles.filter((p) => p.running && !e.sources.some((s) => ownerOf(e, s.endpoint) === p));
+  const phase = e.sources.length ? "running" : starting.length ? "starting" : "stopped";
+  const where = e.install ? `${e.install.path}${e.install.named ? " · named" : ""}`
+    : actionsOn ? "its program is not on this machine's PATH" : "";
+  const acts = [];
+  if (actionsOn && phase === "stopped") acts.push(...startActions(e));
+  const ran = e.profiles.find((p) => p.started && !p.running);
+  if (ran && phase === "stopped") acts.push(`<span class="engine-note${ran.exit === "stopped" ? "" : " error"}">${escape(`LAST RUN ${ran.exit === "stopped" ? "STOPPED" : `ENDED: ${ran.exit}`}`)}</span>`);
+  const logged = e.profiles.find((p) => p.started);
+  if (actionsOn && logged) acts.push(`<button class="text-button" data-act="log" data-name="${escape(logged.name)}">Log</button>`);
+  return `<article class="engine-card">
+    <div class="engine-head"><span><b>${escape(e.name)}</b>${e.install?.version ? `<small>${escape(e.install.version)}</small>` : ""}</span>
+    <span class="state ${phase}"><i></i><span>${phase}${e.sources.length > 1 ? ` · ${e.sources.length}` : ""}</span></span></div>
+    ${where ? `<div class="engine-path" title="${escape(where)}">${escape(where)}</div>` : ""}
+    ${e.sources.map((s) => endpointBlock(e, s, status)).join("")}${starting.map(startingBlock).join("")}
+    <div class="engine-acts">${acts.join("")}</div></article>`;
+}
+
+function drawEngines(status) {
+  if (!status) return;
+  const all = engineList(status);
+  const html = all.map((e) => engineCard(e, status)).join("");
+  if ($("engines").dataset.html !== html) {
+    $("engines").dataset.html = html;
+    $("engines").innerHTML = html;
+  }
+  const running = all.filter((e) => e.sources.length).length;
+  $("engines-aside").textContent = actionsOn ? `${installs.length} INSTALLED · ${running} RUNNING` : `${running} RUNNING`;
+  $("no-engines").hidden = all.length > 0;
+  $("no-engines").textContent = actionsOn
+    ? "No engine is installed or running. Name a program steth cannot find with --engine ENGINE=PATH."
+    : "No engine is running.";
+}
+
+$("engines").addEventListener("click", (e) => {
+  const model = e.target.closest("[data-key]"), b = e.target.closest("[data-act]");
+  if (model) select({ model: model.dataset.key });
+  if (!b) return;
+  const name = b.dataset.name;
+  if (b.dataset.act === "start") act("launch", `Starting ${name}`, `Starting ${name}…`, "/api/v1/launch/start", { name, model: "" },
+    `Started ${name}. It shows here once it answers.`, refreshLaunch);
+  if (b.dataset.act === "stop") act("launch", `Stopping ${name}`, `Stopping ${name}…`, "/api/v1/launch/stop", { name }, `Stopped ${name}.`, refreshLaunch);
+  if (b.dataset.act === "log") {
+    chosenProfile = name;
+    $("log-box").open = true;
+    drawWorkspace();
+    $("log-box").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
 /* How long until a time: "in 4 min", "in 40 s", "now". */
 function until(when) {
   const seconds = Math.round((Date.parse(when) - Date.now()) / 1000);
@@ -1103,6 +1204,8 @@ async function pollControls() {
 }
 async function refreshLaunch() {
   try { profiles = (await getAction("/api/v1/launch")) || []; } catch (e) { profiles = []; }
+  /* What is installed is found when steth starts, so it is read once. */
+  if (installs.length === 0) try { installs = (await getAction("/api/v1/engines")) || []; } catch (e) { /* again next time */ }
   drawWorkspace();
 }
 async function pollLaunch() {
@@ -1176,6 +1279,7 @@ function fillSelect(select, groups, value) {
 
 function drawWorkspace() {
   drawLibrary();
+  drawEngines(current);
   $("mode").textContent = actionsOn == null ? "" : actionsOn ? "LOCAL ONLY" : "MONITOR ONLY";
   $("mode").title = actionsOn == null ? "" : actionsOn
     ? "Prompts and actions go only to the engines steth reads, and only from this machine."
@@ -1381,10 +1485,13 @@ function fileActions(f) {
       if (cf.state === "failed" && cf.model) out.push(fileButton("unload", "Unload", { ...at, model: cf.model }));
     }
   }
-  if (out.length === 0) {
-    for (const p of profiles.filter((x) => x.files != null && !x.running)) {
+  /* A stopped profile starts with it where no engine lists it, or where its
+     own engine runs nowhere. */
+  const listed = out.length > 0;
+  for (const p of profiles.filter((x) => x.files != null && !x.running)) {
+    const engine = installs.find((i) => i.profiles.includes(p.name))?.engine;
+    if (!listed || (engine && !current?.sources.some((s) => s.engine === engine)))
       out.push(fileButton("start", `Start ${p.name} with it`, { name: p.name, model: f.path }));
-    }
   }
   if (out.length === 0) {
     // An engine that loads by file opens only what it was started allowed
@@ -1656,8 +1763,6 @@ let current = null;
 
 /* Drops everything drawn for a model no longer loaded. */
 function forget(key) {
-  rows.get(key)?.remove();
-  rows.delete(key);
   for (const view of Object.values(squares)) {
     view.blocks.get(key)?.remove();
     view.blocks.delete(key);
@@ -1668,7 +1773,6 @@ function forget(key) {
 function draw(status) {
   drawSummary(status);
   drawPools(status);
-  drawModels(status);
   drawDrawer(status);
   drawWorkspace();
 }

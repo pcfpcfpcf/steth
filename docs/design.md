@@ -10,8 +10,9 @@ only through each engine's own controls, and only when someone asks.**
 
 Stages 1–7 (monitoring) and 8–11 (managing: launching engines, chat with
 per-reply timings, load and unload, none of it tied to one engine) are
-built. The page keeps its placement view and model cards on the left; the
-controls sit beside them in one workspace (see "The page").
+built. The page keeps its placement view, the engines and their models,
+and the model files on the left; the controls sit beside them in one
+workspace (see "The page").
 
 ## What it is not
 
@@ -209,10 +210,10 @@ in the page only.
 
 ### The page
 
-One page in two columns: memory pools (01), models (02) and model files (03) on the left and,
+One page in two columns: memory pools (01), engines (02) and model files (03) on the left and,
 where steth takes actions, the workspace on the right, held in view as the
 left scrolls, with the conversation taking the height the rest leaves.
-Under 1100 px wide the workspace follows the models; bound off loopback the
+Under 1100 px wide the workspace follows the model files; bound off loopback the
 box takes the whole width. The toolbar picks one model from every engine's
 loaded models and those an engine with controls could load, grouped by
 engine and endpoint, with *Load* or *Unload* for it; and, with launch
@@ -226,14 +227,25 @@ model's decode speed from the state over two minutes, its state, requests,
 KV and endpoint, and the picked profile's log. Bound off loopback the
 workspace is not drawn and the masthead says `MONITOR ONLY`. Clicking a pool
 or a model opens its details in a drawer, as before, with *Talk to it* for
-a model. Model files (03), where steth takes actions, shows the
+a model. Engines (02) has a card for each engine installed (its program
+found), running (its endpoint read) or with a launch profile: its name,
+version, program's path and state, and for each endpoint it serves, the
+port, who started it (steth's profile with its pid, or outside steth),
+*Stop* where steth started it, and the models it holds, each with state and
+memory; clicking one picks it and opens its details. A stopped engine with
+a profile that needs no model has *Start*; one whose profile takes a file
+says to start it from a file in 03, or to pick its model in the toolbar;
+*Log* opens the profile's log under the pulse. An engine steth reads but
+did not find installed (an engine on another machine) still has its card.
+Model files (03), where steth takes actions, shows the
 places (those from the config marked, the others removable), *Add a place*
 to browse to a directory or `.gguf` file, and every model file under them
 with its size. A file's row says what each engine that loads by file does
 with it: in it with *Unload*, loading, *Load into* it, or failed with why,
 which stays until *Load again* or *Unload* clears it;
-where none lists it, *Start* each stopped profile that takes model files
-with it; a running one started before the place was added is named.
+where none lists it, or where the profile's own engine runs nowhere,
+*Start* each stopped profile that takes model files with it; a running one
+started before the place was added is named.
 
 ### Guard
 
