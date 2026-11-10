@@ -26,3 +26,13 @@ First version. One page for the inference engines on a box.
   through the engine's own controls; requests from other sites are refused.
 - geode's decode and prefill speeds, derived from the totals its `steth`
   branch reports.
+- The page in two columns: memory pools, models and model files on the
+  left; the conversation and its numbers beside them.
+- Model files: the `.gguf` files under the places in the config's `models`
+  and those added from the page, which browses this machine one directory
+  at a time (`--places` keeps them). A split model is listed once.
+- Load and unload a file into a running geode from its row; a failed load
+  shows geode's reason and can be loaded again. A row says why no engine
+  can open a file, such as a geode started with no files allowed.
+- `{place}` in a launch profile repeats per place with its flag, so an
+  engine starts allowed to open them.
