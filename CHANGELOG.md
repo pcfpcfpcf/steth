@@ -36,3 +36,7 @@ First version. One page for the inference engines on a box.
   can open a file, such as a geode started with no files allowed.
 - `{place}` in a launch profile repeats per place with its flag, so an
   engine starts allowed to open them.
+- Engines found by their program, on PATH or named with `--engine
+  NAME=PATH`, each startable from the page with no config; the page's
+  Engines section, in place of the model cards, shows each one installed or
+  running, who started it, and its models. `{port}` picks a quiet port.
